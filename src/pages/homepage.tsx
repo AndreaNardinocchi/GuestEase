@@ -31,6 +31,17 @@ const HomePage: React.FC = () => {
        * */}
 
       <Container maxWidth="lg">
+        <Typography
+          variant="body2"
+          sx={{ fontWeight: "bold", textAlign: "center", padding: 5 }}
+          gutterBottom
+        >
+          Hero image coming soon Hero image coming soon Hero image coming soon
+          Hero image coming soon Hero image coming soon Hero image coming soon
+          <br />
+          Hero image coming soon Hero image coming soon Hero image coming soon
+          Hero image coming soon Hero image coming soon Hero image coming soon
+        </Typography>
         <Box textAlign="center" mb={5} sx={{ mt: 4 }}>
           <Typography variant="h2" component="h1" gutterBottom>
             Welcome to GuestEase
