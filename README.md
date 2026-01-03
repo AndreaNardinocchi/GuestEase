@@ -22,3 +22,4 @@ Together, they deliver a smooth and reliable booking experience with clean rooms
 
 npm install @mui/material @emotion/react @emotion/styled
 npm install @mui/icons-material
+npm install express cors dotenv (For the back-end)

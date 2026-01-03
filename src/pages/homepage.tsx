@@ -9,6 +9,7 @@ import {
   CardMedia,
   CardContent,
 } from "@mui/material";
+import HeroImage from "../components/heroImage/heroImage";
 
 /**
  * HomePage
@@ -29,19 +30,9 @@ const HomePage: React.FC = () => {
       {/**
        * Hero section coming soon
        * */}
+      <HeroImage imageUrl="https://placehold.co/600x400" />
 
       <Container maxWidth="lg">
-        <Typography
-          variant="body2"
-          sx={{ fontWeight: "bold", textAlign: "center", padding: 5 }}
-          gutterBottom
-        >
-          Hero image coming soon Hero image coming soon Hero image coming soon
-          Hero image coming soon Hero image coming soon Hero image coming soon
-          <br />
-          Hero image coming soon Hero image coming soon Hero image coming soon
-          Hero image coming soon Hero image coming soon Hero image coming soon
-        </Typography>
         <Box textAlign="center" mb={5} sx={{ mt: 4 }}>
           <Typography variant="h2" component="h1" gutterBottom>
             Welcome to GuestEase
@@ -118,7 +109,7 @@ const HomePage: React.FC = () => {
                   md: "row", // On medium screens and larger (tablet/desktop), place items side‑by‑side horizontally
                 },
 
-                height: 300,
+                height: 400,
                 width: "100%",
                 margin: "0 auto",
               }}
@@ -149,7 +140,7 @@ const HomePage: React.FC = () => {
                 alt="Placeholder"
                 sx={{
                   width: { xs: "100%", md: "50%" },
-                  height: 300,
+                  height: 400,
                   /**
                    * objectFit ensures the image fills the area while keeping its aspect ratio;
                    * parts of the image may be cropped to avoid distortion
