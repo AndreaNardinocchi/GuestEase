@@ -26,7 +26,7 @@ const experiences = [
     id: 1,
     title: "Explore Cliff Trails",
     description:
-      "Beautiful paths perfect for hiking with a stunning view of the Atlantic Ocean.",
+      "Beautiful paths perfect for hiking, guiding you across cliffside trails and quiet stretches of coastline. Each turn reveals sweeping views of the Atlantic.",
     image: "https://placehold.co/600x400",
   },
   {
@@ -81,31 +81,35 @@ const HomePage: React.FC = () => {
       <HeroImage imageUrl="https://placehold.co/600x400" />
 
       {/* Welcome Heading + Intro Paragraph */}
-
-      <Container maxWidth="lg">
-        <Box textAlign="center" mt={4} mb={5}>
-          <Typography variant="h2" component="h1" gutterBottom>
-            Welcome to GuestEase
-          </Typography>
-          <Typography variant="h5" color="textSecondary" paragraph>
-            Your comfort is our priority. Nestled in a peaceful location, our
-            guesthouse offers cozy rooms, friendly service, and a relaxing
-            atmosphere.
-          </Typography>
-        </Box>
-      </Container>
+      <Box
+        textAlign="center"
+        sx={{ pt: "0.5%", pb: "0.05%", backgroundColor: "#EFF5E0" }}
+      >
+        <Container maxWidth="lg">
+          <Box textAlign="center" mt={4} mb={5}>
+            <Typography variant="h2" component="h1" gutterBottom>
+              Welcome to GuestEase
+            </Typography>
+            <Typography variant="h5" color="textSecondary" paragraph>
+              Your comfort is our priority. Nestled in a peaceful location, our
+              guesthouse offers cozy rooms, friendly service, and a relaxing
+              atmosphere.
+            </Typography>
+          </Box>
+        </Container>
+      </Box>
 
       {/* Booking Form Placeholder here*/}
 
       <Typography
         variant="body1"
         paragraph
-        sx={{ textAlign: "center", fontWeight: "bold" }}
+        sx={{ textAlign: "center", fontWeight: "bold", pt: 5 }}
       >
         Booking Form goes here
       </Typography>
 
-      <Container maxWidth="lg" sx={{ mt: 14 }}>
+      <Container maxWidth="lg" sx={{ mt: 9 }}>
         {/* Intro Text Section */}
 
         <Box textAlign="center" mb={5}>
