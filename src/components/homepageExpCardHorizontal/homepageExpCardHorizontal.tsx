@@ -71,7 +71,7 @@ const HomepageExpCardHorizontal: React.FC<ExperienceCardProps> = ({
             },
           }}
         >
-          <Typography variant="h5" gutterBottom>
+          <Typography variant="h5" component="h3" gutterBottom>
             {title}
           </Typography>
           <Typography

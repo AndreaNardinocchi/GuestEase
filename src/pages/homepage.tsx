@@ -24,30 +24,30 @@ import HomepageExpCarousel from "../components/homepageExpCarousel/homepageExpCa
 const experiences = [
   {
     id: 1,
-    title: "Lorem Ipsum Dolor Sit Amet",
+    title: "Explore Cliff Trails",
     description:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed vitae justo vel lorem gravida aliquet.",
+      "Beautiful paths perfect for hiking with a stunning view of the Atlantic Ocean.",
     image: "https://placehold.co/600x400",
   },
   {
     id: 2,
-    title: "Consectetur Adipiscing Elit",
+    title: "Seaweed Soak, Sure Why Not",
     description:
-      "Suspendisse potenti. Integer non lorem non urna tincidunt fermentum. Curabitur ac sapien vel augue cursus.",
+      "Slip into a warm Atlantic seaweed bath and let the stress melt away. Pure Irish wellness, with a bit of salty magic.",
     image: "https://placehold.co/600x400",
   },
   {
     id: 3,
-    title: "Sed Do Eiusmod Tempor",
+    title: "A Drop of the Good Stuff",
     description:
-      "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+      "Taste local Irish whiskey and soak up the stories behind every sip. A relaxed, friendly way to connect with the coast and its culture.",
     image: "https://placehold.co/600x400",
   },
   {
     id: 4,
-    title: "Ut Labore Et Dolore Magna",
+    title: "Paddle Your Own Way",
     description:
-      "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
+      "Explore calm bays, hidden inlets, or open water at your own pace. Perfect for a gentle adventure and a fresh Atlantic breeze.",
     image: "https://placehold.co/600x400",
   },
 ];
@@ -66,6 +66,14 @@ const experiences = [
  * - Content-only card
  */
 const HomePage: React.FC = () => {
+  /**
+   * This is the browser title
+   * https://stackoverflow.com/questions/46160461/how-do-you-set-the-document-title-in-react?
+   */
+  // useEffect(() => {
+  //   document.title = `Welcome to GuestEase | Have a nice stay!`;
+  // });
+
   return (
     <>
       {/* Hero Section */}
@@ -101,7 +109,7 @@ const HomePage: React.FC = () => {
         {/* Intro Text Section */}
 
         <Box textAlign="center" mb={5}>
-          <Typography variant="body1" paragraph>
+          <Typography variant="body1" color="text.secondary" paragraph>
             Whether you're traveling for business or pleasure, GuestEase ensures
             a pleasant stay with clean, well-equipped rooms, fast Wi-Fi, and
             complimentary breakfast. Choose from a range of room options and
@@ -111,17 +119,22 @@ const HomePage: React.FC = () => {
 
         {/* Why Choose Us Section */}
 
-        <Box mb={6}>
-          <Typography variant="h4" gutterBottom>
+        <Box mb={6} sx={{ mt: 6 }}>
+          <Typography variant="h4" component="h2" align="center" gutterBottom>
             Why Choose GuestEase?
           </Typography>
-          <ul style={{ fontSize: "1.1rem", lineHeight: 1.8 }}>
-            <li>✔️ Comfortable and clean accommodations</li>
-            <li>✔️ Fast and free Wi-Fi</li>
-            <li>✔️ Central location with easy access</li>
-            <li>✔️ Friendly and attentive staff</li>
-            <li>✔️ Affordable rates with flexible booking</li>
-          </ul>
+          <p style={{ fontSize: "1.1rem", lineHeight: 1.8 }}>
+            ✓ Comfortable and clean accommodations
+            <br />
+            ✓ Fast and free Wi-Fi
+            <br />
+            ✓ Central location with easy access
+            <br />
+            ✓ Friendly and attentive staff
+            <br />
+            ✓ Affordable rates with flexible booking
+            <br />
+          </p>
         </Box>
 
         {/**
@@ -137,7 +150,7 @@ const HomePage: React.FC = () => {
         >
           <Box sx={{ flex: "1 1 100%", maxWidth: "100%" }}>
             <Typography
-              variant="h3"
+              variant="h4"
               component="h2"
               gutterBottom
               /**
@@ -150,7 +163,7 @@ const HomePage: React.FC = () => {
                * */
               textAlign="center"
             >
-              Some heading
+              Experiences Around Us
             </Typography>
 
             {/* Carousel component displaying experience cards */}
@@ -160,13 +173,18 @@ const HomePage: React.FC = () => {
 
         {/* BREAKFAST & SNACKS Cards Section */}
         <Box sx={{ flex: "1 1 100%", maxWidth: "100%" }}>
-          <Typography variant="h3" gutterBottom textAlign="center">
-            Some Heading
+          <Typography
+            variant="h4"
+            component="h2"
+            gutterBottom
+            textAlign="center"
+          >
+            Your Foodie Experience With Us
           </Typography>
         </Box>
 
-        {/* Grid layout for two cards */}
-    
+        {/* Grid layout for two cards Complimentary Breakfast & Snacks*/}
+
         {/*This Box uses CSS Grid to create a responsive 1‑column / 2‑column layout. 
         - display: "grid" Turns the Box into a CSS Grid container. 
         https://mui.com/system/grid/#css-grid-layout 
@@ -196,7 +214,7 @@ const HomePage: React.FC = () => {
             sx={{
               display: "flex",
               flexDirection: "column",
-              height: 380,
+              height: 360,
               width: "100%",
               maxWidth: 560,
               margin: "0 auto",
@@ -211,9 +229,9 @@ const HomePage: React.FC = () => {
             />
 
             {/* Card text content */}
-            <CardContent sx={{ flex: 1, pb: 4 }}>
-              <Typography variant="h6" gutterBottom noWrap>
-                Lorem Ipsum Dolor
+            <CardContent sx={{ flex: 1, padding: 3 }}>
+              <Typography variant="h5" component="h3" gutterBottom noWrap>
+                Complimentary Breakfast
               </Typography>
 
               <Typography
@@ -226,9 +244,9 @@ const HomePage: React.FC = () => {
                   WebkitBoxOrient: "vertical",
                 }}
               >
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed
-                facilisis urna non commodo aliquet. Integer feugiat sapien vel
-                ligula fermentum, vitae tincidunt lorem viverra.
+                Enjoy a fresh homemade breakfast with pastries, cereals, hot
+                dishes, and locally sourced ingredients to start your day
+                perfectly.
               </Typography>
             </CardContent>
           </Card>
@@ -239,7 +257,7 @@ const HomePage: React.FC = () => {
             sx={{
               display: "flex",
               flexDirection: "column",
-              height: 380,
+              height: 360,
               width: "100%",
               maxWidth: 560,
               margin: "0 auto",
@@ -254,9 +272,9 @@ const HomePage: React.FC = () => {
             />
 
             {/* Card text content */}
-            <CardContent sx={{ flex: 1, overflow: "hidden" }}>
-              <Typography variant="h6" gutterBottom noWrap>
-                Sit Amet Consectetur
+            <CardContent sx={{ flex: 1, overflow: "hidden", padding: 3 }}>
+              <Typography variant="h5" component="h3" gutterBottom noWrap>
+                Snacks & Refreshments
               </Typography>
 
               <Typography
@@ -286,9 +304,8 @@ const HomePage: React.FC = () => {
                   WebkitBoxOrient: "vertical",
                 }}
               >
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer
-                feugiat velit sed luctus posuere. Donec vitae augue non elit
-                fermentum tincidunt.
+                Enjoy complimentary snacks, coffee, tea, and refreshing drinks
+                available throughout the day for your comfort.
               </Typography>
             </CardContent>
           </Card>
@@ -304,8 +321,13 @@ const HomePage: React.FC = () => {
           }}
         >
           <Box sx={{ flex: "1 1 100%", maxWidth: "100%" }}>
-            <Typography variant="h3" gutterBottom textAlign="center">
-              Some Heading
+            <Typography
+              variant="h4"
+              component="h2"
+              gutterBottom
+              textAlign="center"
+            >
+              Discover GuestEase
             </Typography>
 
             {/* Centered content card with logo + text */}
@@ -338,15 +360,14 @@ const HomePage: React.FC = () => {
                   justifyContent: "center",
                 }}
               >
-                <Typography variant="h6" gutterBottom>
-                  Lorem Ipsum Dolor
+                <Typography variant="h6" component={"h3"} gutterBottom>
+                  Comfortable, Modern Rooms for Business & Leisure Travelers{" "}
                 </Typography>
 
                 <Typography variant="body2" color="text.secondary">
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed
-                  facilisis urna non commodo aliquet. Integer feugiat sapien vel
-                  ligula fermentum, vitae tincidunt lorem viverra. Curabitur non
-                  risus vitae elit ullamcorper tincidunt vel vel ipsum.
+                  At GuestEase, we make sure every stay feels like home. Enjoy
+                  cozy rooms, complimentary breakfast, and curated experiences
+                  around our guesthouse.
                 </Typography>
               </CardContent>
             </Card>

@@ -62,7 +62,7 @@ const HomepageExpCarousel = ({
   };
 
   return (
-    <Box sx={{ position: "relative", my: 4, width: "100%" }}>
+    <Box sx={{ position: "relative", mt: 4, mb: 1, width: "100%" }}>
       {/* 
         Left arrow: only shown when not on the first slide.
         Conditional rendering source:
