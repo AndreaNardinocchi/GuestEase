@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import HeroImage from "../components/heroImage/heroImage";
 import HomepageExpCarousel from "../components/homepageExpCarousel/homepageExpCarousel";
+import HomepageThreeCardComp from "../components/homepageThreeCardComp/homepageThreeCardComp";
 
 /**
  * experiences
@@ -120,7 +121,7 @@ const HomePage: React.FC = () => {
             enjoy facilities designed for your convenience.
           </Typography>
         </Box>
-
+        <HomepageThreeCardComp />
         {/* Why Choose Us Section */}
 
         <Box mb={6} sx={{ mt: 6 }}>
