@@ -36,7 +36,7 @@ const HomepageExpCardHorizontal: React.FC<ExperienceCardProps> = ({
         image={image}
         alt={title}
         sx={{
-          width: { xs: "100%", sm: "70%", md: "70%" }, // Tablet & desktop = 50%
+          width: { xs: "100%", sm: "60%", md: "60%" }, // Tablet & desktop = 50%
           height: { xs: 220, sm: "100%" },
           /**
            * objectFit ensures the image fills the area while keeping its aspect ratio;
@@ -65,7 +65,7 @@ const HomepageExpCardHorizontal: React.FC<ExperienceCardProps> = ({
             flexGrow: 1,
             paddingTop: {
               // ensuring tablet view also show the
-              md: "25%",
+              md: "30%",
               sm: "30%",
               xs: "5%",
             },

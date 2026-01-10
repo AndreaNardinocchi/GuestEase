@@ -62,50 +62,22 @@ const FacilitiesPage: React.FC = () => {
           >
             {/* Left list */}
             <Box component="ul" sx={{ pl: 2, m: 0 }}>
-              <li>
-                <Typography color="text.secondary">
-                  Comfortable beds with fresh linens{" "}
-                </Typography>
-              </li>
-              <li>
-                <Typography color="text.secondary">
-                  Private bathrooms with complimentary toiletries
-                </Typography>
-              </li>
-              <li>
-                <Typography color="text.secondary">
-                  Heating and hot water throughout the year{" "}
-                </Typography>
-              </li>
-              <li>
-                <Typography color="text.secondary">
-                  High-speed Wi-Fi and desk setups
-                </Typography>
-              </li>
+              <Typography color="text.secondary">
+                ✓ Comfortable beds with fresh linens <br />
+                ✓ Private bathrooms with complimentary toiletries
+                <br />✓ Heating and hot water throughout the year <br />✓
+                High-speed Wi-Fi and desk setups
+              </Typography>
             </Box>
 
             {/* Right list */}
             <Box component="ul" sx={{ pl: 2, m: 0 }}>
-              <li>
-                <Typography color="text.secondary">
-                  Complimentary breakfast daily{" "}
-                </Typography>
-              </li>
-              <li>
-                <Typography color="text.secondary">
-                  Tea and coffee available for guests{" "}
-                </Typography>
-              </li>
-              <li>
-                <Typography color="text.secondary">
-                  Luggage storage before check-in or after check-out{" "}
-                </Typography>
-              </li>
-              <li>
-                <Typography color="text.secondary">
-                  Free on-site parking and easy access to local attractions{" "}
-                </Typography>
-              </li>
+              <Typography color="text.secondary">
+                ✓ Complimentary breakfast daily <br />✓ Tea and coffee available
+                for guests <br />✓ Luggage storage before check-in or after
+                check-out <br />✓ Free on-site parking and easy access to local
+                attractions{" "}
+              </Typography>
             </Box>
           </Box>
         </Box>

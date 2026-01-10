@@ -29,7 +29,7 @@ const experiences = [
     id: 1,
     title: "Explore Cliff Trails",
     description:
-      "Beautiful paths perfect for hiking, guiding you across cliffside trails and quiet stretches of coastline. Each turn reveals sweeping views of the Atlantic.",
+      "Beautiful paths perfect for hiking, guiding you across cliffside trails and quiet stretches of stunning Atlantic coastline. ",
     image: getPublicUrl("hiking-experience.jpg"),
   },
   {

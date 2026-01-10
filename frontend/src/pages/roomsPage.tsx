@@ -10,12 +10,12 @@ import {
   CardMedia,
   CardContent,
   CardActions,
-  Button,
 } from "@mui/material";
-
 import { Link, useNavigate } from "react-router-dom";
 import type { Room } from "../types/interfaces";
 import { getRooms } from "../api/guestease-api";
+// Importing the supabase 'assets' storage function
+import { getPublicUrl } from "../utils/supabaseAssetsStorage";
 
 /**
  * The RoomsPage is a page where the user can check out all rooms, regardless of
@@ -82,7 +82,7 @@ const RoomsPage: React.FC = () => {
         {/* If no data, then, run an empty array [] otherwise, 'map' the Room interface in Supabase*/}
         {(data ?? []).map((room: Room) => (
           <Box
-            // The key will  via the room id in Supabase the room to show in the below card
+            // The key will via the room id in Supabase the room to show in the below card
             key={room.id}
             sx={{
               width: {
@@ -108,7 +108,7 @@ const RoomsPage: React.FC = () => {
                  * Bulge‑out hover effect
                  *
                  * https://developer.mozilla.org/en-US/docs/Web/CSS/transition
-                 *  * https://developer.mozilla.org/en-US/docs/Web/CSS/transform
+                 * https://developer.mozilla.org/en-US/docs/Web/CSS/transform
                  */
                 transition: "transform 0.25s ease, box-shadow 0.25s ease",
                 "&:hover": {
@@ -130,11 +130,15 @@ const RoomsPage: React.FC = () => {
                 component="img"
                 height="260"
                 /**
-                 * `image` pulls the first image from the room's images array which are stored in the
-                 * 'assets' folder for now.
-                 * We are using a placeholder image for now, but 4 images will be shown per room.
+                 * The images of the rooms are now stored in the 'storage' section of supabase:
+                 * https://supabase.com/dashboard/project/xxxxxxxxxxxxxx/storage/files/buckets/assets
+                 * The folder hierarchy is '/assets/rooms/roomId/4 images per room', but we are pulling the first
+                 * room only here.
+                 * The 4 images will be shown in a carousel component on other pages in the nextst steps. Also,
+                 * the images have now been manually uploaded to Suapabase, but the plan is that of having the 'admin'
+                 * role being able to CRUD rooms.
                  *  */
-                image={`/assets/${room.images[0]}`}
+                image={getPublicUrl(`/rooms/${room.id}/${room.images[0]}`)}
                 alt={room.name}
               />
 

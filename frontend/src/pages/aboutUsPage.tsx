@@ -240,30 +240,18 @@ const AboutUsPage: React.FC = () => {
         >
           {/* Left list */}
           <Box component="ul" sx={{ pl: 2, m: 0 }}>
-            <li>
-              <Typography color="text.secondary">
-                Remote workers seeking inspiring, functional spaces
-              </Typography>
-            </li>
-            <li>
-              <Typography color="text.secondary">
-                Couples looking for warmth, privacy, and atmosphere
-              </Typography>
-            </li>
+            <Typography color="text.secondary">
+              ✓ Remote workers seeking inspiring, functional spaces
+              <br />✓ Couples looking for warmth, privacy, and atmosphere
+            </Typography>
           </Box>
 
           {/* Right list */}
           <Box component="ul" sx={{ pl: 2, m: 0 }}>
-            <li>
-              <Typography color="text.secondary">
-                Families who value flexibility, space, and ease
-              </Typography>
-            </li>
-            <li>
-              <Typography color="text.secondary">
-                Explorers wanting a calm base between adventures
-              </Typography>
-            </li>
+            <Typography color="text.secondary">
+              ✓ Families who value flexibility, space, and ease
+              <br />✓ Explorers wanting a calm base between adventures
+            </Typography>
           </Box>
         </Box>
       </Box>
