@@ -32,3 +32,23 @@ export interface SearchFormData {
   checkOut: string;
   guests: number;
 }
+
+export type SearchRoomContextType = {
+  /**
+   * availableRoomsSearchObjectType is a function that queries available rooms based on:
+   * checkIn, checkOut, and guests number.
+   * It returns a Promise resolving to an object
+   * This function is implemented in the 'SearchRoomContext.ts' which wraps
+   * the Supabase RPC call in searchAvailableRooms.ts.
+   * https://react.dev/reference/react/use
+   */
+  availableRoomsSearchObjectType: (
+    checkIn: string,
+    checkOut: string,
+    guests: number
+  ) => Promise<{
+    success: boolean; // Indicates whether the search was successful
+    rooms: any[]; // Array of available rooms returned from the database
+    message?: string; // Optional message for errors or additional info
+  }>;
+};

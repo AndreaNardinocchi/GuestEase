@@ -6,7 +6,7 @@ Together, they deliver a smooth and reliable booking experience with clean rooms
 
 ## Tech Stack
 
-- **Frontend:** React, TypeScript, Vite
+- **Frontend:** React, TypeScript, Vite, Material UI
 - **Backend:** Node.js (Express)
 - **Database & Auth:** Supabase
 - **Other:** Supabase Storage, RLS, API Routes

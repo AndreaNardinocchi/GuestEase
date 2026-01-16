@@ -1,5 +1,6 @@
 import React, { createContext, useContext } from "react";
-import { SearchFormData } from "../types/interfaces";
+import { searchAvailableRooms } from "../supabase/availableRooms";
+import { SearchRoomContextType } from "../types/interfaces";
 
 /**
  * Creating the const SearchRoomContext with the interface SearchRoomContext.
@@ -7,12 +8,7 @@ import { SearchFormData } from "../types/interfaces";
  * searchRoomForm trigger a room search.
  *
  * https://github.com/AndreaNardinocchi/MoviesApp/blob/main/src/contexts/moviesContext.tsx
- */
-interface SearchRoomContextType {
-  searchRooms: (data: SearchFormData) => void;
-}
-
-/**
+ *
  * SearchRoomProvider wraps the application with SearchRoomContext,
  * making booking‑related functions available to all child components.
  *
@@ -29,26 +25,33 @@ export const SearchRoomContext = createContext<
 export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  // Placeholder search function.
-  const searchRooms = (data: SearchFormData) => {
-    console.log("Pretend searching rooms:", data);
-  };
+  /**
+   * Calls the service layers 'searchAvailableRooms.ts' to fetch available rooms
+   * based on check‑in date, check‑out date, and number of guests.
+   * It wraps the service call in a try/catch block preventing unhandled
+   * promise rejections inside the context.
+   * Finally, its name must match the BookingContextType name through which we pass the user inputted data.
+   * As a matter of fact, the context provider exposes this function through its 'value' prop.
+   * If the names do not match, TypeScript will report a type mismatch.
+   **/
 
-  /** The value object passed to the provider.
-   *
-   * This object will later include the values needed:
-   * availableRooms
-   * loading state
-   * error state
-   * */
-
-  const value: SearchRoomContextType = {
-    searchRooms,
+  const availableRoomsSearchObjectType = async (
+    checkIn: string,
+    checkOut: string,
+    guests: number
+  ) => {
+    try {
+      const result = await searchAvailableRooms(checkIn, checkOut, guests);
+      return result;
+    } catch {
+      return { success: false, rooms: [], message: "Error fetching rooms." };
+    }
   };
 
   // Providing the context to all children.
+  // Value is now called in from the interface
   return (
-    <SearchRoomContext.Provider value={value}>
+    <SearchRoomContext.Provider value={{ availableRoomsSearchObjectType }}>
       {children}
     </SearchRoomContext.Provider>
   );
