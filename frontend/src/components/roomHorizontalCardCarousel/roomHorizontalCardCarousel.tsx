@@ -147,6 +147,41 @@ const RoomCardHorizontalCarousel: React.FC<BookingCardImageCarouselProps> = ({
       </Box>
 
       {/* 
+  Pagination Dots where each dot represents a slide.
+  The active dot is highlighted based on 'currentIndex'.
+*/}
+      <Box
+        sx={{
+          position: "absolute",
+          bottom: 10,
+          left: "50%",
+          transform: "translateX(-50%)",
+          display: "flex",
+          gap: 1,
+        }}
+      >
+        {images.map((img, index) => (
+          <Box
+            // We add the key to call in the slide 'index'
+            key={index}
+            sx={{
+              width: 8,
+              height: 8,
+              // This will return a small dot
+              borderRadius: "50%",
+              bgcolor:
+                // If 'index' is the current one, let's return the non-transparent dot..
+                index === currentIndex
+                  ? "rgba(255,255,255,1)"
+                  : // ...otherwise, return the more transparent one
+                    "rgba(255,255,255,0.5)",
+              transition: "0.3s",
+            }}
+          />
+        ))}
+      </Box>
+
+      {/* 
         Right Arrow only shown when NOT on the last slide.
       */}
       {currentIndex < images.length - 1 && (
