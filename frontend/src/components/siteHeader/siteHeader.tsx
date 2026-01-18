@@ -11,7 +11,7 @@
  * otherwise, the standard navigation links should render.
  */
 
-import React, { useState, type MouseEvent } from "react";
+import React, { useContext, useEffect, useState, type MouseEvent } from "react";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import IconButton from "@mui/material/IconButton";
@@ -26,12 +26,27 @@ import LoginIcon from "@mui/icons-material/Login";
 // Importing the supabase 'assets' storage function
 import { getPublicUrl } from "../../utils/supabaseAssetsStorage";
 import { useLocation } from "react-router-dom";
-import { Box } from "@mui/material";
+import { AuthContext } from "../../contexts/authContext";
+import UserProfileDrawer from "../userProfileDrawer/userProfileDrawer";
 
 const Offset = styled("div")(({ theme }) => theme.mixins.toolbar);
 
 const SiteHeader: React.FC = () => {
   const location = useLocation();
+
+  // Created a useState for userName so that we can set it as a user logs in
+  const [userName, setUserName] = useState("User");
+
+  const { token, user } = useContext(AuthContext) || {};
+
+  useEffect(
+    () => {
+      // You can remove this or set it from somewhere else if needed
+      setUserName(user?.first_name ?? "User");
+    }, // Run this effect every time `token` changes ensuring the 'userFirstName' is up-to-date
+    [token, user],
+  );
+
   /**
    * We created the variable 'navButtonStyle' to style a nav link
    * when 'active' to enhance the user experience.
@@ -74,13 +89,26 @@ const SiteHeader: React.FC = () => {
   });
 
   /**
-   * Checks whether the current URL path is the homepage, and returns true only when the user is on "/".
-   * We use it to erase the offSet between the HeroImage and siteHeader components
+   * 'drawerOpen' state has been set for the logged in user state. The reason behind that is
+   * that to manage the open/close state of the UserProfileDrawer,
+   * a side panel (also known as a drawer) that slides in from the edge of the screen, a boolean
+   * state variable that tracks whether the drawer is currently visible (true) or hidden (false)
+   * was needed
+   */
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  /**
+   * Checks whether the current URL path is the homepage or other pages for
+   * which we wish to have the offSet removed, and returns true only when
+   * the user is on "/", "/login", and so on.
+   * We use it to erase the offSet between the HeroImage and siteHeader components.
    */
   const isHomePage = location.pathname === "/";
   const isLoginPage = location.pathname === "/login";
-  // Stores the logged‑in user's name (default placeholder for now) */
-  const [userName, setUserName] = useState("User");
+
+  const isUserArea =
+    location.pathname.startsWith("/account") ||
+    location.pathname.startsWith("/account/profile");
 
   /**
    * React Router navigation helper
@@ -92,7 +120,6 @@ const SiteHeader: React.FC = () => {
 
   /**
    * Access the Material UI theme object
-   *
    * https://reactnavigation.org/docs/use-theme/
    * */
   const theme = useTheme();
@@ -102,7 +129,6 @@ const SiteHeader: React.FC = () => {
    * Anchor element for the mobile dropdown menu.
    * When null the menu is closed.
    * When set, then, menu opens at that element's position.
-   *
    * https://mui.com/material-ui/react-menu/
    */
   const [mobileAnchorEl, setMobileAnchorEl] = useState<null | HTMLElement>(
@@ -216,11 +242,20 @@ const SiteHeader: React.FC = () => {
                     </MenuItem>
                   );
                 })}
-
-                <MenuItem>Welcome {userName}! </MenuItem>
-                <MenuItem onClick={() => navigate("/login")}>
-                  Login <LoginIcon sx={{ ml: 1 }} />
-                </MenuItem>
+                {token ? (
+                  <MenuItem
+                    onClick={() => {
+                      setDrawerOpen(true);
+                      handleMenuClose();
+                    }}
+                  >
+                    Welcome {userName}!
+                  </MenuItem>
+                ) : (
+                  <MenuItem onClick={() => navigate("/login")}>
+                    Login <LoginIcon sx={{ ml: 1 }} />
+                  </MenuItem>
+                )}
               </Menu>
             </>
           ) : (
@@ -255,20 +290,43 @@ const SiteHeader: React.FC = () => {
                 Facilities
               </Button>
 
-              <Button sx={{ textTransform: "none" }} color="inherit">
-                Welcome {userName}!
-              </Button>
-              <Button
-                sx={{ textTransform: "none" }}
-                color="inherit"
-                onClick={() => navigate("/login")}
-              >
-                Login <LoginIcon sx={{ ml: 1 }} />
-              </Button>
+              {token ? (
+                <>
+                  <Button
+                    sx={{
+                      textTransform: "none",
+                      color: isUserArea ? "#EFF5E0" : "inherit",
+                      borderBottom: isUserArea ? "3px solid #EFF5E0" : "none",
+                      fontWeight: isUserArea ? "bold" : "inherit",
+                    }}
+                    color="inherit"
+                    onClick={() => setDrawerOpen(true)}
+                  >
+                    Welcome {userName}
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  sx={{
+                    textTransform: "none",
+                    color: isUserArea ? "#EFF5E0" : "inherit",
+                    borderBottom: isUserArea ? "3px solid #EFF5E0" : "none",
+                    fontWeight: isUserArea ? "bold" : "inherit",
+                  }}
+                  color="inherit"
+                  onClick={() => navigate("/login")}
+                >
+                  Login <LoginIcon sx={{ ml: 1 }} />
+                </Button>
+              )}
             </>
           )}
         </Toolbar>
       </AppBar>
+      <UserProfileDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      />
 
       {/* Only add Offset if not one of the below pages */}
       {!isHomePage && !isLoginPage && <Offset />}
