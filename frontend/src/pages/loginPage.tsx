@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 // https://v5-0-6.mui.com/components/text-fields/?
 import {
   Box,
@@ -24,6 +24,7 @@ import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 // Importing the supabase 'assets' storage function
 import { getPublicUrl } from "../utils/supabaseAssetsStorage";
+import { AuthContext } from "../contexts/authContext";
 
 /**
  * This login page has been created mainly following what
@@ -50,7 +51,7 @@ const LoginPage: React.FC = () => {
    * Access the authentication context, giving the component
    * access to user data, token, and auth-related functions.
    */
-  //   const auth = useContext(AuthContext);
+  const auth = useContext(AuthContext);
 
   // useSate() hooks for storing user input from the login form.
   const [email, setEmail] = useState("");
@@ -168,7 +169,7 @@ const LoginPage: React.FC = () => {
         >
           <Container maxWidth="sm">
             <Typography variant="h4" gutterBottom>
-              Have a nice stay!
+              Sign in and have a nice stay!
             </Typography>
 
             <Box component="form" noValidate autoComplete="off">
@@ -238,7 +239,7 @@ const LoginPage: React.FC = () => {
                   "&:hover": { bgcolor: "#e26d5c" },
                 }}
               >
-                Submit
+                Sign in
               </Button>
 
               <Box sx={{ textAlign: "center", mt: 2 }}>

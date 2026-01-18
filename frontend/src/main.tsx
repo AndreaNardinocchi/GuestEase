@@ -12,6 +12,7 @@ import SiteHeader from "./components/siteHeader/siteHeader";
  * */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SearchProvider } from "./contexts/searchRoomsContext";
+import AuthContextProvider from "./contexts/authContext";
 
 /**
  * Create a new QueryClient instance for the whole app,
@@ -29,7 +30,7 @@ const queryClient = new QueryClient({
 });
 
 const root = ReactDOM.createRoot(
-  document.getElementById("root") as HTMLElement
+  document.getElementById("root") as HTMLElement,
 );
 root.render(
   <React.StrictMode>
@@ -40,10 +41,12 @@ root.render(
        */}
       <SearchProvider>
         <BrowserRouter>
-          <SiteHeader />
-          <App />
+          <AuthContextProvider>
+            <SiteHeader />
+            <App />
+          </AuthContextProvider>
         </BrowserRouter>
       </SearchProvider>
     </QueryClientProvider>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

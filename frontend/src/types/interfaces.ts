@@ -45,7 +45,7 @@ export type SearchRoomContextType = {
   availableRoomsSearchObjectType: (
     checkIn: string,
     checkOut: string,
-    guests: number
+    guests: number,
   ) => Promise<{
     success: boolean; // Indicates whether the search was successful
     rooms: any[]; // Array of available rooms returned from the database
@@ -71,3 +71,33 @@ export type RoomHorizontalCardProps = {
   guests: number;
   capacity: number;
 };
+
+// Signed up User interface
+export interface User {
+  first_name: string;
+  last_name: string;
+  zip_code: string;
+  id: string;
+  email: string;
+  role?: string;
+  country: string;
+  created_at: string;
+}
+
+/**
+ * Interface describing the shape of the authentication context.
+ */
+export interface AuthContextInterface {
+  // Indicates whether authentication-related operations are in progress
+  loading: any;
+  // The current authentication token, or null if not authenticated
+  token: string | null;
+  user: User | null;
+  /**
+   * Handles authentication using Supabase session data.
+   * supabaseData is the object containing user and session information from Supabase
+   */
+  authenticate: (supabaseData: { user: any; session: any }) => Promise<void>;
+  // Signs the user out and clears authentication state
+  signout: () => void;
+}
