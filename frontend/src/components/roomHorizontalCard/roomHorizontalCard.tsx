@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardActions, Typography, Box } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { RoomHorizontalCardProps } from "../../types/interfaces";
+import RoomCardHorizontalCarousel from "../roomHorizontalCardCarousel/roomHorizontalCardCarousel";
 
 /**
  * This card is used to show available rooms data, where each card will show 1 room.
@@ -49,23 +50,11 @@ const RoomHorizontalCard: React.FC<RoomHorizontalCardProps> = ({
           overflow: "hidden",
         }}
       >
-        {images?.map((image: any, i: any) => (
-          <img
-            src={image}
-            alt={name}
-            style={{
-              width: "100%",
-              height: "100%",
-              /**
-               * objectFit ensures the image fills the area while keeping its aspect ratio;
-               * parts of the image may be cropped to avoid distortion
-               * https://developer.mozilla.org/en-US/docs/Web/CSS/object-fit
-               */
-              objectFit: "cover",
-              display: "block",
-            }}
-          />
-        ))}
+        {images && images.length > 0 && (
+          <Box sx={{ width: { xs: "100%", md: "100%" }, flexShrink: 0 }}>
+            <RoomCardHorizontalCarousel images={images} />
+          </Box>
+        )}
       </Box>
 
       {/* Content section */}

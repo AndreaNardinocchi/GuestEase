@@ -126,7 +126,11 @@ const SearchResultsPage: React.FC = () => {
               description={room.description}
               price={room.price}
               // Fetching the first image of the array
-              images={[getPublicUrl(`/rooms/${room.id}/${room.images[0]}`)]}
+              // images={[getPublicUrl(`/rooms/${room.id}/${room.images[0]}`)]}
+              // We are now fetching all images shown through the roomHorizontalCardCarousel
+              images={room.images.map((img) =>
+                getPublicUrl(`/rooms/${room.id}/${img}`),
+              )}
               amenities={room?.amenities}
               checkIn={checkIn}
               checkOut={checkOut}
