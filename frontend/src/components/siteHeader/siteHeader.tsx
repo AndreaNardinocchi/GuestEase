@@ -107,6 +107,7 @@ const SiteHeader: React.FC = () => {
   const isLoginPage = location.pathname === "/login";
   const isSignUpPage = location.pathname === "/signup";
   const isUpdatePasswordPage = location.pathname === "/update-password";
+  const isSearchResultsPage = location.pathname === "/search-results/";
 
   /**
    * When the user lands on the 'account' or '/account/profile' pages,
@@ -338,7 +339,8 @@ const SiteHeader: React.FC = () => {
       {!isHomePage &&
         !isLoginPage &&
         !isSignUpPage &&
-        !isUpdatePasswordPage && <Offset />}
+        !isUpdatePasswordPage &&
+        isSearchResultsPage && <Offset />}
     </>
   );
 };

@@ -17,6 +17,9 @@ import { useAvailableRooms } from "../hooks/useAvailableRooms";
 import { Room } from "../types/interfaces";
 import { getPublicUrl } from "../utils/supabaseAssetsStorage";
 import { useLocation } from "react-router-dom";
+import StickyHeaderComp from "../components/stickyHeaderComp/stickyHeaderComp";
+import EditSearchRoomsForm from "../components/editSearchRoomsForm/editSearchRoomsForm";
+import ResponsiveBookingWrapper from "../components/responsiveSearchFormWrapper/responsiveSearchFormWrapper";
 
 /**
  * This is the the page where all available rooms will be shown based on
@@ -72,11 +75,9 @@ const SearchResultsPage: React.FC = () => {
   if (isLoading) {
     return (
       <Container sx={{ mt: 10, textAlign: "center" }}>
-        {" "}
         <Box display="flex" justifyContent="center" mt={10}>
-          {" "}
-          <CircularProgress />{" "}
-        </Box>{" "}
+          <CircularProgress />
+        </Box>
       </Container>
     );
   }
@@ -93,23 +94,34 @@ const SearchResultsPage: React.FC = () => {
   //  Main content
   return (
     <>
-      {/* Top App Bar indicating the search dates*/}{" "}
-      <AppBar position="static" sx={{ backgroundColor: "#EFF5E0" }}>
+      {/* Top App Bar indicating the search dates*/}
+      <AppBar
+        position="sticky"
+        sx={{ backgroundColor: "#EFF5E0", mt: 14, mb: 2, top: 0 }}
+      >
         <Toolbar>
-          <HotelIcon sx={{ mr: 1, color: "#000000de" }} />{" "}
+          <HotelIcon sx={{ mr: 1, color: "#000000de" }} />
           <Typography variant="h6" sx={{ flexGrow: 1, color: "#000000de" }}>
             Search Results
           </Typography>
-          {/* Show selected dates + guests */}{" "}
+          {/* Show selected dates + guests */}
           <Box display="flex" alignItems="center" gap={1}>
-            {" "}
-            <CalendarMonthIcon sx={{ color: "#000000de" }} />{" "}
+            <CalendarMonthIcon sx={{ color: "#000000de" }} />
             <Typography variant="body2" sx={{ color: "#000000de" }}>
-              {checkIn} → {checkOut} ({guests} guests){" "}
+              {checkIn} → {checkOut} ({guests} guests)
             </Typography>
           </Box>
         </Toolbar>
       </AppBar>
+      <ResponsiveBookingWrapper>
+        <StickyHeaderComp>
+          <EditSearchRoomsForm
+            initialCheckIn={checkIn}
+            initialCheckOut={checkOut}
+            initialGuests={guests}
+          />
+        </StickyHeaderComp>
+      </ResponsiveBookingWrapper>
       {/* Main Content */}
       <Container sx={{ py: 6 }}>
         <Box sx={{ display: "grid", gridTemplateColumns: "1fr", rowGap: 4 }}>

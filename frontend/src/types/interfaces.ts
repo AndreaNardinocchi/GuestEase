@@ -385,3 +385,12 @@ export const countries: Country[] = [
   { code: "ZM", name: "Zambia" },
   { code: "ZW", name: "Zimbabwe" },
 ];
+
+/**
+ * These props are needed
+ */
+export interface editSearchRoomsFormProps {
+  initialCheckIn: string;
+  initialCheckOut: string;
+  initialGuests: number;
+}

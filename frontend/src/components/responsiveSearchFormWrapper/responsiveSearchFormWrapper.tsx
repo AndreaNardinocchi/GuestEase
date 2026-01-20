@@ -2,7 +2,7 @@ import { Box } from "@mui/material";
 import { useState, useEffect } from "react";
 
 /**
- * We created this component towork our way around the mobile view of the
+ * We created this component to work our way around the mobile view of the
  * searchRoomsForm which was taking up to much space.
  * This component collapses its children (StickyHeaderComp, and SearchRoomForm) into a
  * toggleable panel on mobile (width < 768px), but shows them normally on desktop.
