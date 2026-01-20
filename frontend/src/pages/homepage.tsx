@@ -16,6 +16,7 @@ import { getPublicUrl } from "../utils/supabaseAssetsStorage";
 import SearchRoomsForm from "../components/searchRoomsForm/searchRoomsForm";
 import { experiences } from "../types/interfaces";
 import StickyHeaderComp from "../components/stickyHeaderComp/stickyHeaderComp";
+import ResponsiveBookingWrapper from "../components/responsiveSearchFormWrapper/responsiveSearchFormWrapper";
 
 /**
  * HomePage
@@ -65,9 +66,11 @@ const HomePage: React.FC = () => {
       </Box>
 
       {/* Booking Form Placeholder here*/}
-      <StickyHeaderComp>
-        <SearchRoomsForm />
-      </StickyHeaderComp>
+      <ResponsiveBookingWrapper>
+        <StickyHeaderComp>
+          <SearchRoomsForm />
+        </StickyHeaderComp>
+      </ResponsiveBookingWrapper>
 
       <Container maxWidth="lg" sx={{ mt: 4 }}>
         {/* Intro Text Section */}

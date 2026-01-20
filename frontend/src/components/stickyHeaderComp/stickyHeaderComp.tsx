@@ -28,7 +28,8 @@ const StickyHeaderComp: React.FC<StickyNavigationBarProps> = ({ children }) => {
         width: "100%",
         zIndex: 1200,
         backgroundColor: "#e26d5c",
-        boxShadow: "0px 2px 6px rgba(0,0,0,0.06)",
+        // boxShadow: "0px 2px 6px rgba(0,0,0,0.06)",
+        boxShadow: "0px 4px 8px rgba(0,0,0,0.15)",
       }}
     >
       <Box
