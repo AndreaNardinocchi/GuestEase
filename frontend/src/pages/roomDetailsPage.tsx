@@ -14,6 +14,7 @@ import {
 import { supabase } from "../supabase/supabaseClient";
 import { useAvailableRooms } from "../hooks/useAvailableRooms";
 import { useQuery } from "@tanstack/react-query";
+import { getPublicUrl } from "../utils/supabaseAssetsStorage";
 
 /**
  * This will be the page where all the room details and image gallery
@@ -148,7 +149,8 @@ const RoomDetailsPage: React.FC = () => {
       >
         <Box
           component="img"
-          src="https://placehold.co/1200x600"
+          // src="https://placehold.co/1200x600"
+          src={getPublicUrl(`/rooms/${room.id}/${room.images[0]}`)}
           alt="Room placeholder"
           sx={{
             width: "100%",
