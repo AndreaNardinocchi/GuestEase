@@ -8,7 +8,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import adminUsersPlaceholder from "./routes/adminUsersPlaceholder.js";
 import adminBookingsPlaceholder from "./routes/adminBookingsPlaceholder.js";
-import userBookingsPlaceholder from "./routes/userBookingsPlaceholder.js";
+import userBookings from "./routes/userBookings.js";
 import emailPlaceholder from "./routes/emailPlaceholder.js";
 import paymentsPlaceholder from "./routes/paymentsPlaceholder.js";
 
@@ -28,7 +28,7 @@ app.use(
   cors({
     origin: "http://localhost:5173",
     credentials: true,
-  })
+  }),
 );
 
 /* ---------------------------
@@ -69,7 +69,7 @@ app.post("/user/delete_user", async (req, res) => {
  * */
 app.use(adminUsersPlaceholder);
 app.use(adminBookingsPlaceholder);
-app.use(userBookingsPlaceholder);
+app.use(userBookings);
 app.use(emailPlaceholder);
 app.use(paymentsPlaceholder);
 

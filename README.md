@@ -31,3 +31,7 @@ npm install @supabase/supabase
 npm install @tanstack/react-query
 npm install @supabase/supabase-js
 npm install @tanstack/react-query
+npm i --save-dev @types/express
+npm install @supabase/supabase-js (in the backend too)
+npm install --save-dev vite
+

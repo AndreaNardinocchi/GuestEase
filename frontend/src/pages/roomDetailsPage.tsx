@@ -15,6 +15,7 @@ import { supabase } from "../supabase/supabaseClient";
 import { useAvailableRooms } from "../hooks/useAvailableRooms";
 import { useQuery } from "@tanstack/react-query";
 import { getPublicUrl } from "../utils/supabaseAssetsStorage";
+import { createBookingApi } from "../api/user-booking-api";
 
 /**
  * This will be the page where all the room details and image gallery
@@ -28,6 +29,8 @@ const RoomDetailsPage: React.FC = () => {
    * https://reactrouter.com/en/main/hooks/use-params
    */
   const { roomId } = useParams<{ roomId: string }>();
+
+  const navigate = useNavigate();
 
   const location = useLocation();
 
@@ -111,12 +114,11 @@ const RoomDetailsPage: React.FC = () => {
   /*
    * HandleBook validates dates, it checks availability
    */
-  const handleBook = () => {
+  const handleBook = async () => {
     if (!checkIn || !checkOut) {
       setError("Please select valid dates before booking.");
       return;
     }
-
     /**
      * 'The some() method of Array instances returns true if it finds one element in the array
      * that satisfies the provided testing function. Otherwise, it returns false.'
@@ -129,13 +131,40 @@ const RoomDetailsPage: React.FC = () => {
       setError("This room is not available for the selected dates.");
       return;
     }
-    <CircularProgress />;
 
-    /**
-     * Alert placeholder to confirm booking
-     */
+    try {
+      /**
+       * To be able to book, a user must be logged in, therefore, we need
+       * to retrieve the user from supabase.
+       * https://supabase.com/docs/reference/javascript/auth-getuser
+       */
+      const user = await supabase.auth.getUser();
+      const userId = user.data.user?.id;
 
-    alert(`Look at you, You just booked ${room.name}`);
+      if (!userId) {
+        setError("You must be logged in to book a room.");
+        return;
+      }
+
+      /**
+       * We then create the booking object to be sent to the user-booking-api,
+       * which in turn will post it to the userBooking.js in the backend.
+       * The userBooking.js file in the backend will create the booking server-side
+       * and send it to supabase ....IN PROGRESS...
+       */
+      const booking = await createBookingApi({
+        room_id: room.id,
+        check_in: checkIn,
+        check_out: checkOut,
+        guests,
+        userId,
+      });
+
+      // Redirect to a confirmation  ....IN PROGRESS...
+      navigate(`/booking-confirmation/${booking.booking.id}`);
+    } catch (err: any) {
+      setError(err.message);
+    }
   };
 
   return (

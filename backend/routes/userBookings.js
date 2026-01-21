@@ -10,7 +10,6 @@ import express from "express";
  * https://www.geeksforgeeks.org/web-tech/express-js-express-router-function/
  */
 const router = express.Router();
-
 // --------------------
 // USER Create Booking
 // --------------------
