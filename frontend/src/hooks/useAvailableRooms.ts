@@ -1,5 +1,6 @@
 // https://tanstack.com/query/latest/docs/react/reference/useQuery
 import { useQuery } from "@tanstack/react-query";
+import { supabase } from "../supabase/supabaseClient";
 import { searchAvailableRooms } from "../supabase/availableRooms";
 
 /**
@@ -13,7 +14,7 @@ import { searchAvailableRooms } from "../supabase/availableRooms";
 export function useAvailableRooms(
   checkIn: string,
   checkOut: string,
-  guests: number
+  guests: number,
 ) {
   return useQuery({
     queryKey: ["availableRooms", checkIn, checkOut, guests],
@@ -23,13 +24,25 @@ export function useAvailableRooms(
      * https://supabase.com/docs/guides/database/functions
      */
     queryFn: async () => {
+      /**
+       * queryFn calls the searchAvailableRooms async function from searchAvailableRooms.ts,
+       * which, in turn, calls in the Supabase PostgreSQL RPC function named "get_available_rooms".
+       * https://supabase.com/docs/guides/database/functions
+       */
       const result = await searchAvailableRooms(checkIn, checkOut, guests);
 
       if (!result.success) {
         throw new Error(result.message || "Failed to fetch rooms");
       }
-
       return result.rooms;
     },
+    /**
+     * enabled: boolean
+     * Set this to false to disable this query from automatically running.
+     * Can be used for Dependent Queries.
+     * Only run this query when all three values (checkIn, checkOut, guests) are valid.
+     * https://tanstack.com/query/v3/docs/framework/react/reference/useQuery
+     */
+    enabled: Boolean(checkIn && checkOut && guests),
   });
 }

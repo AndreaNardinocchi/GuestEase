@@ -11,6 +11,9 @@ import {
   TextField,
   CircularProgress,
 } from "@mui/material";
+import { supabase } from "../supabase/supabaseClient";
+import { useAvailableRooms } from "../hooks/useAvailableRooms";
+import { useQuery } from "@tanstack/react-query";
 
 /**
  * This will be the page where all the room details and image gallery
@@ -25,7 +28,6 @@ const RoomDetailsPage: React.FC = () => {
    */
   const { roomId } = useParams<{ roomId: string }>();
 
-  const navigate = useNavigate();
   const location = useLocation();
 
   /**
@@ -46,25 +48,41 @@ const RoomDetailsPage: React.FC = () => {
   // Error message for UI
   const [error, setError] = useState<string | null>(null);
 
-  /**
-   * The below Room object is just a placeholder, as the real data will be fetched and cached from
-   * supabase
+  /*
+   * React Query fetches Room Details cached by roomId
    */
-  const room = {
-    id: roomId,
-    name: "Sample Room",
-    description:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-    price: 150,
-    capacity: 4,
-    amenities: ["WiFi", "TV", "Air Conditioning"],
-  };
+  const {
+    data: room,
+    isLoading: roomLoading,
+    error: roomError,
+  } = useQuery({
+    queryKey: ["room", roomId],
+    queryFn: async () => {
+      /**
+       * Fetch a single room from Supabase.
+       * https://supabase.com/docs/reference/javascript/select
+       */
+      const { data, error } = await supabase
+        .from("rooms")
+        .select("*")
+        .eq("id", roomId)
+        .single();
 
-  // Fake availability data, as it always returns this room as "available"
-  const availability = [{ id: roomId }];
+      if (error || !data) throw new Error("Room not found");
+      return data;
+    },
+  });
 
-  // No error state since we're not fetching from an API
-  const availabilityError = false;
+  /*
+   * Fetching Availability
+   * Uses the custom hook useAvailableRooms which calls the Supabase RPC function.
+   * https://supabase.com/docs/guides/database/functions
+   */
+  const { data: availability, error: availabilityError } = useAvailableRooms(
+    checkIn,
+    checkOut,
+    guests,
+  );
 
   /**
    * Update page title when room data loads.
@@ -77,7 +95,11 @@ const RoomDetailsPage: React.FC = () => {
     }
   }, [room]);
 
-  if (!room) {
+  if (roomLoading) {
+    return <CircularProgress sx={{ display: "block", mx: "auto", my: 10 }} />;
+  }
+
+  if (roomError || !room) {
     return <Alert severity="error">Room not found.</Alert>;
   }
 
