@@ -1,7 +1,9 @@
 /**
- * Scaffolding of a router through which we will manage the user booking CRUD logic
+ * Router managing the booking cancellations from the user side
  */
 import express from "express";
+import { supabase } from "../supabaseClientBackend.js";
+import { calculateStay } from "../utils/calculateTotalPriceUtil.js";
 
 /**
  * express.Router is a way to organize related routes together. This will allow us to apply
@@ -10,25 +12,6 @@ import express from "express";
  * https://www.geeksforgeeks.org/web-tech/express-js-express-router-function/
  */
 const router = express.Router();
-// --------------------
-// USER Create Booking
-// --------------------
-router.post("/user/create_booking", async (req, res) => {
-  res.json({
-    status: "placeholder",
-    message: "Create booking endpoint wired",
-  });
-});
-
-// --------------------
-// USER Update Booking
-// --------------------
-router.post("/user/update_booking", async (req, res) => {
-  res.json({
-    status: "placeholder",
-    message: "Update booking endpoint wired",
-  });
-});
 
 // --------------------
 // USER Delete Booking

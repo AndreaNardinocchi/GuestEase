@@ -8,7 +8,9 @@ import cors from "cors";
 import dotenv from "dotenv";
 import adminUsersPlaceholder from "./routes/adminUsersPlaceholder.js";
 import adminBookingsPlaceholder from "./routes/adminBookingsPlaceholder.js";
-import userBookings from "./routes/userBookings.js";
+import userCreateBookings from "./routes/userCreateBookings.js";
+import userCancelBookings from "./routes/userCancelBookings.js";
+import userUpdateBookings from "./routes/userUpdateBookings.js";
 import emailPlaceholder from "./routes/emailPlaceholder.js";
 import paymentsPlaceholder from "./routes/paymentsPlaceholder.js";
 
@@ -69,7 +71,9 @@ app.post("/user/delete_user", async (req, res) => {
  * */
 app.use(adminUsersPlaceholder);
 app.use(adminBookingsPlaceholder);
-app.use(userBookings);
+app.use(userCreateBookings);
+app.use(userUpdateBookings);
+app.use(userCancelBookings);
 app.use(emailPlaceholder);
 app.use(paymentsPlaceholder);
 
