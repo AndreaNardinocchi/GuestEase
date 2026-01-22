@@ -85,25 +85,3 @@ router.post("/user/create_booking", async (req, res) => {
 });
 
 export default router;
-
-// // --------------------
-// // USER Update Booking
-// // --------------------
-// router.post("/user/update_booking", async (req, res) => {
-//   res.json({
-//     status: "placeholder",
-//     message: "Update booking endpoint wired",
-//   });
-// });
-
-// // --------------------
-// // USER Delete Booking
-// // --------------------
-// router.post("/user/delete_booking", async (req, res) => {
-//   res.json({
-//     status: "placeholder",
-//     message: "Delete booking endpoint wired",
-//   });
-// });
-
-// export default router;

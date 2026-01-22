@@ -394,3 +394,32 @@ export interface editSearchRoomsFormProps {
   initialCheckOut: string;
   initialGuests: number;
 }
+
+/**
+ * Props definition for RoomDetailsCard which describes all the data,
+ * and callback functions that the RoomDetailsCard component needs to render.
+ * The parent component (RoomDetailsPage) controls the booking state,
+ * while RoomDetailsCard focuses purely on displaying the UI and sending out
+ * the user actions.
+ */
+export interface RoomDetailsCardProps {
+  room: {
+    name: string;
+    description: string;
+    amenities: string[];
+    price: number;
+    capacity: number;
+  };
+  // These values will be passed by the RoomDetailsPage
+  // State values
+  guests: number;
+  checkIn: string;
+  checkOut: string;
+  // State setters
+  // https://www.typescriptlang.org/docs/handbook/2/functions.html
+  setGuests: (n: number) => void;
+  setCheckIn: (date: string) => void;
+  setCheckOut: (date: string) => void;
+  // Action callback
+  onBook: () => void;
+}

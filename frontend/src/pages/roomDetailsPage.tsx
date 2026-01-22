@@ -16,6 +16,7 @@ import { useAvailableRooms } from "../hooks/useAvailableRooms";
 import { useQuery } from "@tanstack/react-query";
 import { getPublicUrl } from "../utils/supabaseAssetsStorage";
 import { createBookingApi } from "../api/user-booking-api";
+import RoomDetailsCard from "../components/roomDetailsCard/roomDetailsCard";
 
 /**
  * This will be the page where all the room details and image gallery
@@ -176,6 +177,7 @@ const RoomDetailsPage: React.FC = () => {
           mb: 3,
         }}
       >
+        {/* This hero image will be replaced by a carousel to display all 4 room images */}
         <Box
           component="img"
           // src="https://placehold.co/1200x600"
@@ -198,69 +200,16 @@ const RoomDetailsPage: React.FC = () => {
           </Alert>
         )}
 
-        <Card sx={{ p: 2, mb: 4 }}>
-          <CardContent>
-            <Typography variant="h4" gutterBottom>
-              {room.name}
-            </Typography>
-
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              {room.description}
-            </Typography>
-
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              €{room.price} / night
-            </Typography>
-
-            <Typography variant="subtitle1" sx={{ mb: 2 }}>
-              Max Guests: {room.capacity}
-            </Typography>
-
-            <Typography variant="subtitle1" sx={{ mb: 2 }}>
-              Amenities: {room.amenities.join(", ")}
-            </Typography>
-
-            <Box sx={{ display: "flex", gap: 2, my: 2 }}>
-              <TextField
-                type="date"
-                label="Check In"
-                // Ensures label stays above the
-                // https://mui.com/x/common-concepts/custom-components/
-                slotProps={{ inputLabel: { shrink: true } }}
-                value={checkIn}
-                onChange={(e) => setCheckIn(e.target.value)}
-              />
-              <TextField
-                type="date"
-                label="Check Out"
-                slotProps={{ inputLabel: { shrink: true } }}
-                value={checkOut}
-                onChange={(e) => setCheckOut(e.target.value)}
-              />
-              <TextField
-                type="number"
-                label="Guests"
-                slotProps={{
-                  inputLabel: { shrink: true },
-                  input: {
-                    // We set 'min' ad 'max' number of guests
-                    // https://mui.com/material-ui/api/input/
-                    inputProps: {
-                      min: 1,
-                      max: room.capacity,
-                    },
-                  },
-                }}
-                value={guests}
-                onChange={(e) => setGuests(Number(e.target.value))}
-              />
-            </Box>
-
-            <Button variant="contained" onClick={handleBook}>
-              Book Now
-            </Button>
-          </CardContent>
-        </Card>
+        <RoomDetailsCard
+          room={room}
+          guests={guests}
+          checkIn={checkIn}
+          checkOut={checkOut}
+          setGuests={setGuests}
+          setCheckIn={setCheckIn}
+          setCheckOut={setCheckOut}
+          onBook={handleBook}
+        />
       </Container>
     </>
   );
