@@ -80,6 +80,10 @@ const RoomDetailsPage: React.FC = () => {
     guests,
   );
 
+  console.log("paramCheckIn:", paramCheckIn);
+  console.log("paramCheckOut:", paramCheckOut);
+  console.log("Current URL:", location.pathname + location.search);
+
   /**
    * Update page title when room data loads.
    * React useEffect docs:

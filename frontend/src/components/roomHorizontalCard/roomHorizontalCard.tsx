@@ -172,7 +172,12 @@ const RoomHorizontalCard: React.FC<RoomHorizontalCardProps> = ({
                 variant="body2"
                 color="text.secondary"
                 component={Link}
-                to={`/room/${id}`}
+                /**
+                 * The URI must pass all parameters related to the room search
+                 * for the RoomDetailsCard to be populated and enhance the
+                 * booking experience of the user
+                 *  */
+                to={`/room/${id}?checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}`}
                 sx={{
                   textDecoration: "none",
                   color: "#000000de",
