@@ -6,6 +6,7 @@
  * https://supabase.com/docs/reference/javascript/select
  */
 import { supabase } from "../supabase/supabaseClient";
+import { Booking } from "../types/interfaces";
 
 export const getRooms = async () => {
   const { data, error } = await supabase.from("rooms").select("*");
@@ -29,5 +30,21 @@ export const getUserProfile = async (userId: string) => {
     .single();
 
   if (error) throw new Error(error.message);
+  return data;
+};
+
+/**
+ * Fetch a single user bookings from the "bookings" table.
+ * Requires the authenticated user's ID.
+ */
+export const getUserBookings = async (userId: string) => {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("*")
+    .eq("user_id", userId);
+
+  if (error) {
+    throw new Error(`Unable to fetch bookings: ${error.message}`);
+  }
   return data;
 };

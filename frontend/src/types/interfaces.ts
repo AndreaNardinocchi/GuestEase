@@ -423,3 +423,20 @@ export interface RoomDetailsCardProps {
   // Action callback
   onBook: () => void;
 }
+
+/**
+ * This Booking interface is used in the AccountMyTripsPage
+ */
+export interface Booking {
+  id: string;
+  room_id: string;
+  user_id: string;
+  // user_email: string;
+  check_in: string;
+  check_out: string;
+  guests: number;
+  created_at: string;
+  first_name: string;
+  last_name: string;
+  total_price: string;
+}

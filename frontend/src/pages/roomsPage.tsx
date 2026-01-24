@@ -40,7 +40,6 @@ const RoomsPage: React.FC = () => {
    *
    * https://tanstack.com/query/latest/docs/framework/react/reference/useQuery
    * https://tanstack.com/query/latest/docs/framework/react/quick-start
-   * https://tanstack.com/query/latest/docs/framework/react/reference/useQuery
    */
   const { data, error, isLoading } = useQuery({
     queryKey: ["rooms"],
