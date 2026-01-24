@@ -1,0 +1,19 @@
+-- This function checks whether an email already exists in Supabase's
+-- authentication table 'auth.users'.
+
+create or replace function check_email_exists(email_input text)
+-- This boolean will return true or false based on the outcome of
+--     select 1 from auth.users where email = email_input
+-- https://www.postgresql.org/docs/current/sql-createfunction.html#SQL-CREATEFUNCTION-SECURITY
+returns boolean
+language sql
+-- security definer allows this function to access 'auth.users'
+security definer
+as $$
+-- This checks whether the email inputted by the user on the SignUpPage
+-- already 'exists' in the auth.users
+-- https://www.postgresql.org/docs/current/functions-subquery.html#FUNCTIONS-SUBQUERY-EXISTS
+  select exists (
+    select 1 from auth.users where email = email_input
+  );
+$$;

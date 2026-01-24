@@ -63,6 +63,11 @@ const SignUpPage: React.FC = () => {
    * was sent off
    * */
   const [confirmationMessage, setConfirmationMessage] = useState("");
+  /**
+   * This state, instead, is used for leting the user know that they
+   * have tried to sign up with an email already registered.
+   */
+  const [rejectionMessage, setRejectionMessage] = useState("");
 
   /**
    * Handles the full signup process as it validatesthe required fields
@@ -107,6 +112,20 @@ const SignUpPage: React.FC = () => {
     }
 
     try {
+      /**
+       * We introduced an existing email check through a supabase PostgreSQL function.
+       */
+      const { data: emailExists } = await supabase.rpc("check_email_exists", {
+        email_input: email,
+      });
+
+      if (emailExists) {
+        setRejectionMessage(
+          "This email is already registered. Please, use a different email, thank you!",
+        );
+        return;
+      }
+
       console.log("Calling Supabase signUp...");
       // Call Supabase signUp
       // https://supabase.com/docs/guides/auth/managing-user-data
@@ -134,6 +153,7 @@ const SignUpPage: React.FC = () => {
       console.log("User signed up successfully:", data);
 
       // We will set a confirmation message
+      // https://stackoverflow.com/questions/73802604/how-to-check-if-user-already-exists-in-supabase
       if (data.user && !data.user.email_confirmed_at) {
         setConfirmationMessage(
           "Account created! Please check your email to confirm your account.",
@@ -202,13 +222,15 @@ const SignUpPage: React.FC = () => {
               onChange={(e) => setFirstName(e.target.value)}
               error={nameError}
               helperText={nameError ? "Please enter your first name" : ""}
-              InputProps={{
-                // https://stackoverflow.com/questions/69554151/how-to-change-material-ui-textfield-inputadornment-background-color
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <PersonIcon />
-                  </InputAdornment>
-                ),
+              slotProps={{
+                input: {
+                  // https://stackoverflow.com/questions/69554151/how-to-change-material-ui-textfield-inputadornment-background-color
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <PersonIcon />
+                    </InputAdornment>
+                  ),
+                },
               }}
             />
 
@@ -221,12 +243,14 @@ const SignUpPage: React.FC = () => {
               onChange={(e) => setLastName(e.target.value)}
               error={nameError}
               helperText={nameError ? "Please enter your last name" : ""}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <PersonIcon />
-                  </InputAdornment>
-                ),
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <PersonIcon />
+                    </InputAdornment>
+                  ),
+                },
               }}
             />
 
@@ -240,12 +264,14 @@ const SignUpPage: React.FC = () => {
               onChange={(e) => setEmail(e.target.value)}
               error={nameError}
               helperText={nameError ? "Please enter your email" : ""}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <EmailIcon />
-                  </InputAdornment>
-                ),
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <EmailIcon />
+                    </InputAdornment>
+                  ),
+                },
               }}
             />
 
@@ -259,24 +285,26 @@ const SignUpPage: React.FC = () => {
               onChange={(e) => setPassword(e.target.value)}
               error={passwordError}
               helperText={passwordError ? "Passwords do not match" : ""}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <KeyIcon />
-                  </InputAdornment>
-                ),
-                // https://stackoverflow.com/questions/63047684/material-ui-select-menu-with-end-adornment#66245441
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setShowPassword((prev) => !prev)}
-                      edge="end"
-                    >
-                      {/* https://materialui.co/icon/visibility-off{" "} */}
-                      {showPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <KeyIcon />
+                    </InputAdornment>
+                  ),
+                  // https://stackoverflow.com/questions/63047684/material-ui-select-menu-with-end-adornment#66245441
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        edge="end"
+                      >
+                        {/* https://materialui.co/icon/visibility-off */}
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
               }}
             />
 
@@ -290,22 +318,28 @@ const SignUpPage: React.FC = () => {
               onChange={(e) => setConfirmPassword(e.target.value)}
               error={passwordError}
               helperText={passwordError ? "Passwords do not match" : ""}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <KeyIcon />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setShowConfirmPassword((prev) => !prev)}
-                      edge="end"
-                    >
-                      {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <KeyIcon />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowConfirmPassword((prev) => !prev)}
+                        edge="end"
+                      >
+                        {showConfirmPassword ? (
+                          <VisibilityOff />
+                        ) : (
+                          <Visibility />
+                        )}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
               }}
             />
 
@@ -365,7 +399,7 @@ const SignUpPage: React.FC = () => {
             </Button>
           </Box>
 
-          {confirmationMessage && (
+          {confirmationMessage ? (
             <Box
               sx={{
                 mb: 4,
@@ -377,14 +411,32 @@ const SignUpPage: React.FC = () => {
             >
               <Alert
                 severity="success"
-                variant="filled"
+                // variant="filled"
                 sx={{ fontSize: "1.25rem", py: 2, px: 3, maxWidth: "500px" }}
               >
                 {confirmationMessage}
               </Alert>
               <CircularProgress size={90} thickness={4} sx={{ mt: 3 }} />
             </Box>
-          )}
+          ) : rejectionMessage ? (
+            <Box
+              sx={{
+                mb: 4,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center",
+              }}
+            >
+              <Alert
+                severity="warning"
+                // variant="filled"
+                sx={{ fontSize: "1.25rem", py: 2, px: 3, maxWidth: "500px" }}
+              >
+                {rejectionMessage}
+              </Alert>
+            </Box>
+          ) : null}
         </Container>
       </Box>
     </>
