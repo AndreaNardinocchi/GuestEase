@@ -5,6 +5,7 @@ import type { User } from "../types/interfaces";
 import { useQuery } from "@tanstack/react-query";
 import { getUserProfile } from "../api/guestease-api";
 import { AuthContext } from "../contexts/authContext";
+import AccountSubNav from "../accountSubNav/accountSubNav";
 
 /**
  * This is the UserProfilePage where all user data are displayed.
@@ -69,28 +70,23 @@ const UserProfilePage: React.FC = () => {
     <>
       <Container maxWidth="lg">
         <Box maxWidth="1200px" mx="auto" px={2}>
-          <Typography variant="h3">Hey {user.first_name}</Typography>
-          <Typography variant="h5">Account #{user.id.slice(-8)}</Typography>
-        </Box>
-
-        <Box maxWidth="1200px" mx="auto" mt={4} px={2}>
-          {/* <SubNav /> */}
-
-          <Typography
-            variant="h5"
-            align="center"
-            sx={{ color: "#472d30", mb: 1, mt: 3 }}
-          >
-            Here we will have a subnav ###
+          <Typography variant="h3" component="h2">
+            Hey {user.first_name}
           </Typography>
-
-          <Typography
+          <Typography variant="h5" component="h3">
+            Account #{user.id.slice(-8)}
+          </Typography>
+        </Box>
+        <AccountSubNav />
+        <Box maxWidth="1200px" mx="auto" mt={4} px={2}>
+          {/* <Typography
             variant="h4"
+            component="h1"
             align="center"
             sx={{ color: "#472d30", mb: 1, mt: 3 }}
           >
             My Profile
-          </Typography>
+          </Typography> */}
 
           <Box
             sx={{

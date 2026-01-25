@@ -6,6 +6,7 @@ import { AuthContext } from "../contexts/authContext";
 import { useQuery } from "@tanstack/react-query";
 import { getPublicUrl } from "../utils/supabaseAssetsStorage";
 import BookedRoomCard from "../components/bookedRoomCard/bookedRoomCard";
+import AccountSubNav from "../accountSubNav/accountSubNav";
 
 /**
  * The AccountMyTripsPage dissplays all upcoming and past reservations.
@@ -18,7 +19,7 @@ const AccountMyTripsPage: React.FC = () => {
    * destructure 'user' and 'loading' with a fallback to an empty object.
    */
   const auth = useContext(AuthContext);
-  const { user, loading } = auth || {};
+  const { user } = auth || {};
 
   /**
    * React Query is a data-fetching and caching library that simplifies working with
@@ -69,37 +70,47 @@ const AccountMyTripsPage: React.FC = () => {
 
   return (
     <>
-      <Box maxWidth="1200px" mx="auto" px={2}>
-        <Typography variant="h3">Hey {user?.first_name}</Typography>
-        <Typography variant="h5">Account #{user?.id.slice(-8)}</Typography>
-      </Box>
+      <Container maxWidth="lg">
+        <Box maxWidth="1200px" mx="auto" px={2}>
+          <Typography variant="h3" component="h2">
+            Hey {user?.first_name}
+          </Typography>
+          <Typography variant="h5" component="h3">
+            Account #{user?.id.slice(-8)}
+          </Typography>
+        </Box>
 
-      {/* <SubNav /> */}
-
-      <Box maxWidth="1200px" mx="auto" px={2} sx={{ mb: 12 }}>
+        <AccountSubNav />
         <Typography
           variant="h4"
+          component="h3"
           align="center"
-          sx={{ color: "#472d30", mb: 1, mt: 3 }}
+          sx={{ color: "#472d30", mb: 1, mt: 1 }}
         >
           My Reservations
         </Typography>
 
-        <Box
-          mt={2}
-          display="grid"
-          gridTemplateColumns={{ xs: "1fr", sm: "1fr 1fr", md: "1fr 1fr 1fr" }}
-          gap={3}
-        >
-          {(data ?? []).map((booking: Booking) => (
-            <BookedRoomCard
-              key={booking.id}
-              booking={booking}
-              room={booking.rooms}
-            />
-          ))}
+        <Box maxWidth="1200px" mx="auto" px={2} sx={{ mb: 12 }}>
+          <Box
+            mt={2}
+            display="grid"
+            gridTemplateColumns={{
+              xs: "1fr",
+              sm: "1fr 1fr",
+              md: "1fr 1fr 1fr",
+            }}
+            gap={3}
+          >
+            {(data ?? []).map((booking: Booking) => (
+              <BookedRoomCard
+                key={booking.id}
+                booking={booking}
+                room={booking.rooms}
+              />
+            ))}
+          </Box>
         </Box>
-      </Box>
+      </Container>
     </>
   );
 };
