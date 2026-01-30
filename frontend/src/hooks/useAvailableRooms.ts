@@ -14,9 +14,11 @@ export function useAvailableRooms(
   checkIn: string,
   checkOut: string,
   guests: number,
+  // Added to exclude the current booking id when user is updating their booking dates
+  excludeBookingId?: number,
 ) {
   return useQuery({
-    queryKey: ["availableRooms", checkIn, checkOut, guests],
+    queryKey: ["availableRooms", checkIn, checkOut, guests, excludeBookingId],
     /**
      * queryFn calls the searchAvailableRooms async function from searchAvailableRooms.ts,
      * which, in turn, calls in the Supabase PostgreSQL RPC function named "get_available_rooms".
@@ -29,7 +31,13 @@ export function useAvailableRooms(
        * https://supabase.com/docs/guides/database/functions
        */
 
-      const result = await searchAvailableRooms(checkIn, checkOut, guests);
+      const result = await searchAvailableRooms(
+        checkIn,
+        checkOut,
+        guests,
+        // Added to exclude the current booking id when user is updating their booking dates
+        excludeBookingId,
+      );
 
       if (!result.success) {
         throw new Error(result.message || "Failed to fetch rooms");

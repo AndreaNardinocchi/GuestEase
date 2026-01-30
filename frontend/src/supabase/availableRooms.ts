@@ -12,7 +12,11 @@ import { supabase } from "./supabaseClient";
 export const searchAvailableRooms = async (
   checkIn: string,
   checkOut: string,
-  guests: number
+  guests: number,
+  // Added to exclude the current booking id when user is updating their booking dates
+  // It must be called out as possibly undefined as searchAvailableRooms is also used
+  // for generic search when the user is not logged in
+  excludeBookingId?: number,
 ) => {
   try {
     /**
@@ -26,6 +30,8 @@ export const searchAvailableRooms = async (
       check_in: checkIn,
       check_out: checkOut,
       guests: guests,
+      // Added to exclude the current booking id when user is updating their booking dates
+      exclude_booking_id: excludeBookingId,
     });
 
     // If Supabase returned an error, throw it so it is caught by the catch block

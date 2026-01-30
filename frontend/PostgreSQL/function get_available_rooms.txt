@@ -20,21 +20,28 @@ CREATE EXTENSION IF NOT EXISTS btree_gist;
 -- https://www.postgresql.org/docs/current/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
 
 ALTER TABLE bookings
+DROP CONSTRAINT IF EXISTS no_overlapping_bookings;
+
+ALTER TABLE bookings
 ADD CONSTRAINT no_overlapping_bookings
 EXCLUDE USING gist (
   room_id WITH =,
   period WITH &&
 );
 
-
 -- ============================================================
 -- 3. Create or replace the availability function
 -- ============================================================
 
+-- Drop the old version first so we can remove the default argument
+DROP FUNCTION IF EXISTS public.get_available_rooms(date, date, integer, uuid);
+
 CREATE OR REPLACE FUNCTION public.get_available_rooms(
   check_in date,
   check_out date,
-  guests int
+  guests int,
+  -- This is added to exclude the current booking id when user is updating their booking dates
+  exclude_booking_id uuid
 )
 RETURNS TABLE (
   id uuid,
@@ -77,6 +84,7 @@ WHERE
     SELECT 1
     FROM public.bookings AS b
     WHERE b.room_id::uuid = r.id
+    AND (exclude_booking_id IS NULL OR b.id != exclude_booking_id)
 
       -- Compare the booking's stored daterange (b.period)
       -- with the requested range created by daterange($1, $2, '[)')

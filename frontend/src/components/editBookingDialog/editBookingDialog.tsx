@@ -6,23 +6,8 @@ import {
   DialogActions,
   TextField,
   Button,
-  Slide,
 } from "@mui/material";
-import { TransitionProps } from "@mui/material/transitions";
-
-/**
- * This is a nice transition effect we were eager to try out,
- * and worked out well.
- * https://mui.com/material-ui/react-dialog/#transitions
- */
-const Transition = React.forwardRef(function Transition(
-  props: TransitionProps & {
-    children: React.ReactElement<any, any>;
-  },
-  ref: React.Ref<unknown>,
-) {
-  return <Slide direction="up" ref={ref} {...props} />;
-});
+import { useAvailableRooms } from "../../hooks/useAvailableRooms";
 
 interface EditBookingDialogProps {
   open: boolean;
@@ -72,14 +57,27 @@ const EditBookingDialog: React.FC<EditBookingDialogProps> = ({
   const checkOutDate = new Date(booking.check_out);
   const dateError = checkInDate >= checkOutDate;
 
+  const { data: availableRooms, isLoading } = useAvailableRooms(
+    booking.check_in,
+    booking.check_out,
+    booking.guests,
+    /**
+     * Fetching the booking id to exclude when checking the room availabilty for the booking updates.
+     * If we do not exclude it, the modal will show the overlapError at any time.
+     * We want it to only show when there is an overlap indeed wit any other bookings in place.
+     * */
+    booking.id,
+  );
+
+  // Here we tech the room id of our booked room to check its availability
+  const roomIsAvailable =
+    availableRooms?.some((r: any) => r.id === room.id) ?? true;
+
+  // If the room is not available, we raise the overlapError
+  const overlapError = !roomIsAvailable;
+
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
-      maxWidth="sm"
-      slots={{ transition: Transition }}
-    >
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>Edit Booking</DialogTitle>
 
       <DialogContent>
@@ -101,8 +99,14 @@ const EditBookingDialog: React.FC<EditBookingDialogProps> = ({
           }}
           // https://stackoverflow.com/questions/71168362/unable-to-display-helper-text-in-mui-x-date-picker-when-using-along-with-react-h
           // https://m2.material.io/components/text-fields/flutter#theming-text-fields
-          error={dateError}
-          helperText={dateError ? "Check-in must be before check-out" : ""}
+          error={overlapError || dateError}
+          helperText={
+            overlapError
+              ? "This room is already booked for these dates"
+              : dateError
+                ? "Check-in must be before check-out"
+                : ""
+          }
         />
 
         <TextField
@@ -123,8 +127,15 @@ const EditBookingDialog: React.FC<EditBookingDialogProps> = ({
           }}
           // https://stackoverflow.com/questions/71168362/unable-to-display-helper-text-in-mui-x-date-picker-when-using-along-with-react-h
           // https://m2.material.io/components/text-fields/flutter#theming-text-fields
-          error={dateError}
-          helperText={dateError ? "Check-out must be after check-in" : ""}
+
+          error={overlapError || dateError}
+          helperText={
+            overlapError
+              ? "This room is already booked for these dates"
+              : dateError
+                ? "Check-in must be before check-out"
+                : ""
+          }
         />
 
         <TextField
@@ -154,6 +165,10 @@ const EditBookingDialog: React.FC<EditBookingDialogProps> = ({
         <Button
           onClick={() => onSave(booking)}
           variant="contained"
+          // By disabling the button in case of any errors, we prevent overlapping and so on
+          // https://stackoverflow.com/questions/76068707/disabling-a-material-ui-button-when-there-is-no-value
+          // https://mui.com/material-ui/react-button/
+          disabled={overlapError || dateError}
           sx={{ backgroundColor: "#472d30", "&:hover": { bgcolor: "#e26d5c" } }}
         >
           Save
