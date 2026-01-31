@@ -12,26 +12,77 @@ import {
   Alert,
   Container,
 } from "@mui/material";
+import {
+  getConfirmationBooking,
+  getUserProfile,
+  getRoomById,
+} from "../api/guestease-api";
+import { useQuery } from "@tanstack/react-query";
+import { getPublicUrl } from "../utils/supabaseAssetsStorage";
 
 const BookingConfirmationPage: React.FC = () => {
   const { id } = useParams();
 
-  // Placeholder state
-  const loading = false;
-  const error = null;
+  /**
+   * Once again we make use of the useQuery() function to catch data
+   * from the 'bookings' table in Supabase through the 'getConfirmationBooking'
+   * function in the 'guestease-api.tsx' file
+   * https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
+   */
+  const bookingQuery = useQuery({
+    queryKey: ["booking", id],
+    enabled: !!id,
+    queryFn: () => getConfirmationBooking(id as string),
+  });
+
+  /**
+   * We make use of the useQuery() function to catch data
+   * from the 'profiles' table in Supabase through the 'getUserProfile'
+   * function in the 'guestease-api.tsx' file
+   * https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
+   */
+  const profileQuery = useQuery({
+    queryKey: ["profile", bookingQuery.data?.user_id],
+    enabled: !!bookingQuery.data?.user_id,
+    queryFn: () => getUserProfile(bookingQuery.data!.user_id),
+  });
+
+  /**
+   * We make use of the useQuery() function to catch data
+   * from the 'rooms' table in Supabase through the 'getRoomById'
+   * function in the 'guestease-api.tsx' file
+   * https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
+   */
+  const roomQuery = useQuery({
+    queryKey: ["room", bookingQuery.data?.room_id],
+    enabled: !!bookingQuery.data?.room_id,
+    queryFn: () => getRoomById(bookingQuery.data!.room_id),
+  });
 
   // Browser title
   useEffect(() => {
-    document.title = "Booking Confirmation | GuestEase";
-  }, []);
+    if (bookingQuery.data && roomQuery.data) {
+      document.title = `${roomQuery.data.name}'s #${bookingQuery.data.id.slice(
+        -8,
+      )} Reservation | GuestEase`;
+    }
+  }, [bookingQuery.data, roomQuery.data]);
 
-  if (loading) {
+  if (bookingQuery.isLoading || roomQuery.isLoading || profileQuery.isLoading) {
     return <CircularProgress sx={{ display: "block", mx: "auto", my: 10 }} />;
   }
 
-  if (error) {
-    return <Alert severity="error">Something went wrong.</Alert>;
+  if (bookingQuery.isError) {
+    return <Alert severity="error">Booking not found</Alert>;
   }
+
+  if (roomQuery.isError) {
+    return <Alert severity="error">Room not found.</Alert>;
+  }
+
+  const booking = bookingQuery.data;
+  const room = roomQuery.data;
+  const userProfile = profileQuery.data;
 
   return (
     <>
@@ -46,8 +97,8 @@ const BookingConfirmationPage: React.FC = () => {
       >
         <Box
           component="img"
-          src="https://placehold.co/1200x600"
-          alt="Room placeholder"
+          src={getPublicUrl(`/rooms/${room.id}/${room.images[0]}`)}
+          alt={room.name}
           sx={{
             width: "100%",
             height: "100%",
@@ -58,11 +109,11 @@ const BookingConfirmationPage: React.FC = () => {
       </Box>
 
       <Container maxWidth="lg" sx={{ mb: 12 }}>
-        <Box sx={{ px: 4, py: 3 }}>
+        <Box sx={{ py: 3 }}>
           {/* Title */}
           <Typography
             variant="h4"
-            sx={{ mb: 8, color: "#000000de", textAlign: "center" }}
+            sx={{ mt: 2, mb: 8, color: "#000000de", textAlign: "center" }}
           >
             Your The Wild Atlantic Room Reservation is confirmed!
           </Typography>
@@ -131,6 +182,9 @@ const BookingConfirmationPage: React.FC = () => {
             {/* Right column */}
             <Box>
               <Box
+                component="img"
+                src={getPublicUrl(`/rooms/${room.id}/${room.images[1]}`)}
+                alt={room.name}
                 sx={{
                   width: "100%",
                   height: 370,

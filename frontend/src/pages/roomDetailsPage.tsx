@@ -8,6 +8,7 @@ import { getPublicUrl } from "../utils/supabaseAssetsStorage";
 import { createBookingApi } from "../api/user-booking-api";
 import RoomDetailsCard from "../components/roomDetailsCard/roomDetailsCard";
 import RoomDetailsCarousel from "../components/roomDetailsCarousel/roomDetailsCarousel";
+import { getRoomById } from "../api/guestease-api";
 
 /**
  * This will be the page where all the room details and image gallery
@@ -53,20 +54,15 @@ const RoomDetailsPage: React.FC = () => {
     error: roomError,
   } = useQuery({
     queryKey: ["room", roomId],
-    queryFn: async () => {
-      /**
-       * Fetch a single room from Supabase.
-       * https://supabase.com/docs/reference/javascript/select
-       */
-      const { data, error } = await supabase
-        .from("rooms")
-        .select("*")
-        .eq("id", roomId)
-        .single();
-
-      if (error || !data) throw new Error("Room not found");
-      return data;
-    },
+    /**
+     * React Router’s useParams() always returns 'string | undefined',
+     * because the URL might not contain the param.
+     * React Query’s queryFn expects a definite string, hence, we add 'as string'.
+     * '...treat the value as a string type, even if it might not originally be one.'
+     * https://www.webdevtutor.net/blog/typescript-as-string-vs-tostring
+     */
+    queryFn: async () => getRoomById(roomId as string),
+    enabled: !!roomId, // Prevents running until roomId is defined
   });
 
   /*

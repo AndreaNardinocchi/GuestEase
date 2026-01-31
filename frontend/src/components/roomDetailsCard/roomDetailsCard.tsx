@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { Box, TextField, Button, Typography } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { RoomDetailsCardProps } from "../../types/interfaces";
+import AlertDialogSlide from "../roomStayPolicyModal/roomStayPolicyModal";
 
 /**
  * RoomDetailsCard Component is used in the Room Details page, and it
@@ -33,6 +34,16 @@ const RoomDetailsCard: React.FC<RoomDetailsCardProps> = ({
    */
   const today = new Date().toISOString().split("T")[0];
 
+  // useState to manage the roomStayPolicyModal
+  const [policyOpen, setPolicyOpen] = useState(false);
+
+  /**
+   * The are the callbacks to handle the opening and closing of the modal
+   * https://stackoverflow.com/questions/73752294/react-usestate-boolean-issue-functional-component
+   */
+  const handleOpenPolicy = () => setPolicyOpen(true);
+  const handleClosePolicy = () => setPolicyOpen(false);
+
   return (
     <Box
       sx={{
@@ -53,8 +64,23 @@ const RoomDetailsCard: React.FC<RoomDetailsCardProps> = ({
       </Typography>
 
       {/* Room Description */}
-      <Typography variant="body1" gutterBottom sx={{ mb: 4 }}>
+      <Typography variant="body1" gutterBottom sx={{ mb: 2 }}>
         {room.description}
+      </Typography>
+
+      <Typography
+        variant="body1"
+        gutterBottom
+        sx={{
+          mb: 5,
+          cursor: "pointer",
+          fontSize: "0.85rem",
+          fontWeight: 550,
+          "&:hover": { color: "#e26d5c" },
+        }}
+        onClick={handleOpenPolicy}
+      >
+        Check the GuestEase stay policy →
       </Typography>
 
       {/* Outer Gris: Left column + Right column */}
@@ -206,6 +232,7 @@ const RoomDetailsCard: React.FC<RoomDetailsCardProps> = ({
           </ul>
         </Box>
       </Box>
+      <AlertDialogSlide open={policyOpen} onClose={handleClosePolicy} />
     </Box>
   );
 };

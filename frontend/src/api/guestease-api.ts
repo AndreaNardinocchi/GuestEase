@@ -133,3 +133,39 @@ export const deleteUserApi = async (userId: string) => {
   // Return the booking data to the caller.
   return result;
 };
+
+/**
+ * This is a helper to fetch the confirmation booking data to populate
+ * the Booking Confirmation page
+ */
+export const getConfirmationBooking = async (bookingId: string) => {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("*")
+    .eq("id", bookingId)
+    .single();
+
+  if (error) {
+    throw new Error(`Unable to fetch booking: ${error.message}`);
+  }
+
+  return data;
+};
+
+/**
+ * This is a helper to fetch room data by its id to populate
+ * the Booking Confirmation page
+ */
+export const getRoomById = async (roomId: string) => {
+  const { data, error } = await supabase
+    .from("rooms")
+    .select("*")
+    .eq("id", roomId)
+    .single();
+
+  if (error) {
+    throw new Error(`Unable to fetch room: ${error.message}`);
+  }
+
+  return data;
+};
