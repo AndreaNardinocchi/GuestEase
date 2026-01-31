@@ -13,6 +13,7 @@ import RoomDetails from "./pages/roomDetailsPage";
 import UserProfilePage from "./pages/userProfilePage";
 import ProtectedRoute from "./routes/protectedRoutes";
 import AccountMyTripsPage from "./pages/accountMyTripsPage";
+import BookingConfirmationPage from "./pages/bookingConfirmationPage";
 
 const App = () => {
   return (
@@ -44,7 +45,17 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/booking-confirmation/:id"
+          element={
+            <ProtectedRoute>
+              <BookingConfirmationPage />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
+
       <Footer />
     </>
   );

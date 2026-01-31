@@ -110,6 +110,9 @@ const SiteHeader: React.FC = () => {
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/startsWith
   const isSearchResultsPage = location.pathname.startsWith("/search-results");
   const isRoomDetailsPage = location.pathname.startsWith("/room/");
+  const isBookingConfirmationPage = location.pathname.startsWith(
+    "/booking-confirmation/",
+  );
 
   /**
    * When the user lands on the 'account' or '/account/profile' pages,
@@ -343,7 +346,8 @@ const SiteHeader: React.FC = () => {
         !isSignUpPage &&
         !isUpdatePasswordPage &&
         !isSearchResultsPage &&
-        !isRoomDetailsPage && <Offset />}
+        !isRoomDetailsPage &&
+        !isBookingConfirmationPage && <Offset />}
     </>
   );
 };
