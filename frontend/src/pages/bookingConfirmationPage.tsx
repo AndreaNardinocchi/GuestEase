@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Box,
   Card,
@@ -19,9 +19,12 @@ import {
 } from "../api/guestease-api";
 import { useQuery } from "@tanstack/react-query";
 import { getPublicUrl } from "../utils/supabaseAssetsStorage";
+import { calculateNumberOfNights } from "../utils/calculateNumberOfNights";
+import { Link as RouterLink } from "react-router-dom";
 
 const BookingConfirmationPage: React.FC = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
 
   /**
    * Once again we make use of the useQuery() function to catch data
@@ -68,6 +71,14 @@ const BookingConfirmationPage: React.FC = () => {
     }
   }, [bookingQuery.data, roomQuery.data]);
 
+  // We calculate the number of nights
+  const totalNights = bookingQuery.data
+    ? calculateNumberOfNights(
+        bookingQuery.data.check_in,
+        bookingQuery.data.check_out,
+      )
+    : 0;
+
   if (bookingQuery.isLoading || roomQuery.isLoading || profileQuery.isLoading) {
     return <CircularProgress sx={{ display: "block", mx: "auto", my: 10 }} />;
   }
@@ -110,50 +121,86 @@ const BookingConfirmationPage: React.FC = () => {
 
       <Container maxWidth="lg" sx={{ mb: 12 }}>
         <Box sx={{ py: 3 }}>
-          {/* Title */}
           <Typography
             variant="h4"
-            sx={{ mt: 2, mb: 8, color: "#000000de", textAlign: "center" }}
+            component="h1"
+            sx={{ mb: 8, color: "#000000de", textAlign: "center", mt: 1 }}
           >
-            Your The Wild Atlantic Room Reservation is confirmed!
+            Your Booking at <strong>{room.name}</strong> Is Confirmed 🎉
           </Typography>
 
-          {/* Main grid */}
+          {/* Outer grid */}
           <Box
-            display="grid"
-            gridTemplateColumns={{ xs: "1fr", md: "1fr 1fr" }}
-            gap={4}
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+              gap: 4,
+            }}
           >
             {/* Left column */}
-            <Box>
-              <Card elevation={3} sx={{ borderRadius: 2 }}>
-                <CardContent>
-                  <Typography variant="h5" sx={{ mt: 4, mb: 4 }}>
-                    Reservation Number Placeholder
+            <Box
+              sx={{
+                width: {
+                  xs: "100%",
+                  sm: "100%",
+                  md: "100%",
+                },
+              }}
+            >
+              <Card sx={{ width: "100%", borderRadius: 2 }} elevation={3}>
+                <CardContent sx={{ p: 4 }}>
+                  <Typography variant="h5" component="h2" sx={{ mt: 2, mb: 4 }}>
+                    <strong>Reservation Number:</strong> #
+                    {booking.id.slice(-12)}
                   </Typography>
 
                   <Divider sx={{ my: 2 }} />
 
-                  {/* Internal grid */}
+                  {/* Inner grid */}
                   <Box
-                    display="grid"
-                    gridTemplateColumns={{ xs: "1fr", sm: "1fr 1fr" }}
-                    gap={2}
-                    mt={4}
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+                      gap: { xs: 0, sm: 2 },
+                      mt: 4,
+                    }}
                   >
-                    <Box>
-                      <Typography>Guest Info Placeholder</Typography>
+                    {/* Left side */}
+                    <Box sx={{ fontSize: "0.9rem" }}>
+                      <Typography sx={{ mb: { xs: 0, sm: 1 } }}>
+                        <strong>Guest:</strong> {userProfile?.first_name}{" "}
+                        {userProfile?.last_name}
+                        <br />
+                        <strong>Account</strong>: #{userProfile.id.slice(-8)}
+                        <br />
+                        <strong>Room:</strong> {room.name}
+                        <br />
+                        <strong>Check-in:</strong> {booking.check_in}
+                        <br />
+                        <strong>Check-out:</strong> {booking.check_out}
+                      </Typography>
                     </Box>
 
+                    {/* Right side */}
                     <Box>
-                      <Typography>Booking Info Placeholder</Typography>
+                      <Typography sx={{ mb: 1 }}>
+                        <strong>Guests:</strong> {booking.guests}
+                        <br />
+                        <strong>Price per night:</strong> €
+                        {room?.price ? Number(room.price).toFixed(2) : "—"}
+                        <br />
+                        <strong>Nights:</strong> {totalNights}
+                        <br />
+                        <strong>Booked on:</strong>
+                        {new Date(booking.created_at).toLocaleDateString()}
+                      </Typography>
                     </Box>
                   </Box>
 
                   <Divider sx={{ my: 2 }} />
 
                   <Typography variant="h6" sx={{ fontWeight: "bold", mb: 3 }}>
-                    Total Price: €0.00
+                    Total Price: €{booking.total_price.toFixed(2)}
                   </Typography>
 
                   <Button
@@ -164,6 +211,7 @@ const BookingConfirmationPage: React.FC = () => {
                       backgroundColor: "#E26D5C",
                       "&:hover": { backgroundColor: "#c95b4d" },
                     }}
+                    onClick={() => navigate("/account/mytrips")}
                   >
                     View My Bookings
                   </Button>
@@ -171,7 +219,11 @@ const BookingConfirmationPage: React.FC = () => {
                   <Button
                     fullWidth
                     variant="outlined"
-                    sx={{ mb: 2, color: "#000000de" }}
+                    onClick={() => navigate("/")}
+                    sx={{
+                      mb: 2,
+                      color: "#000000de",
+                    }}
                   >
                     Back to Home
                   </Button>
@@ -187,17 +239,27 @@ const BookingConfirmationPage: React.FC = () => {
                 alt={room.name}
                 sx={{
                   width: "100%",
-                  height: 370,
+                  height: { xs: "auto", sm: 370 },
                   bgcolor: "#d0d0d0",
                   borderRadius: 2,
                   boxShadow: 3,
                 }}
               />
 
-              <Typography sx={{ mb: "5%", mt: 4 }}>
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-                eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut
-                enim ad minim veniam, quis nostrud exercitation ullamco laboris
+              <Typography sx={{ mb: "5%", mt: 4, color: "text.primary" }}>
+                Thank you for choosing{" "}
+                <MuiLink
+                  component={RouterLink}
+                  to={`/room/${booking.room_id}`}
+                  sx={{
+                    textDecoration: "none",
+                    color: "#000000de",
+                    "&:hover": { color: "#E26D5C" },
+                  }}
+                >
+                  <strong>{room.name}</strong>
+                </MuiLink>
+                . We’re excited to welcome you and hope you enjoy your stay!
               </Typography>
             </Box>
           </Box>
