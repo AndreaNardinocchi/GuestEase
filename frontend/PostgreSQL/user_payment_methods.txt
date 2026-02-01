@@ -1,0 +1,16 @@
+DROP TABLE IF EXISTS user_payment_methods;
+
+-- We create a table for users' payment methods since we are implementing the setupIntent method
+-- and users cards will only be chard within 24h from check-in
+-- https://docs.stripe.com/api/payment_methods/object#payment_method_object-card
+create table user_payment_methods (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  payment_method_id text not null,
+  brand text,
+  last4 text,
+  exp_month integer,
+  exp_year integer,
+  is_default boolean default false,
+  created_at timestamp default now()
+);

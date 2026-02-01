@@ -151,3 +151,9 @@ AFTER UPDATE ON public.profiles
 FOR EACH ROW
 WHEN (OLD IS DISTINCT FROM NEW)
 EXECUTE FUNCTION public.sync_profile_to_auth();
+
+-- We are adding the column stripe_customer_id which is needed since
+-- it is the anchor that connects the user/profile to their entire payment 
+-- life inside Stripe
+alter table profiles
+add column stripe_customer_id text;

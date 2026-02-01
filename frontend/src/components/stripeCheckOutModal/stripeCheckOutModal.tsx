@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState, useContext } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -9,6 +9,10 @@ import {
 } from "@mui/material";
 import { TransitionProps } from "@mui/material/transitions";
 import StripeCheckOut from "../stripeCheckOut/stripeCheckOut";
+import { createSetupIntentApi } from "../../api/user-booking-api";
+import { AuthContext } from "../../contexts/authContext";
+import { useUserProfile } from "../../hooks/useFetchingUserProfile";
+import { savePaymentMethodApi } from "../../api/user-booking-api";
 
 /**
  * This is a nice transition effect we were eager to try out,
@@ -25,6 +29,13 @@ const Transition = React.forwardRef(function Transition(
 interface PaymentDialogProps {
   open: boolean;
   onClose: () => void;
+  /**
+   * The Stripe Customer ID associated with the user.
+   * This is required so the backend can create a SetupIntent
+   * for the correct customer and attach the saved payment method
+   * to their Stripe profile.
+   * */
+  customerId: string;
 }
 
 /**
@@ -34,7 +45,50 @@ interface PaymentDialogProps {
  * payment flow.
  * https://mui.com/material-ui/react-dialog/
  */
-const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onClose }) => {
+const PaymentDialog: React.FC<PaymentDialogProps> = ({
+  open,
+  onClose,
+  customerId,
+}) => {
+  // We terieve the user auth.users from supabase
+  const auth = useContext(AuthContext);
+  const { user } = auth || {};
+  // We then retrieve the 'profile' user from the 'profiles' table in supabase
+  // since this is the one that has the stripe_customer_id column
+  const { data: profile } = useUserProfile(user?.id);
+  /**
+   * Holds the client secret returned by the backend when creating a SetupIntent.
+   * Stripe needs this value to securely complete the setup flow on the frontend.
+   * It starts as null and is populated once the API request succeeds.
+   */
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+
+  useEffect(() => {
+    console.log("Dialog opened:", open);
+    console.log("Customer ID:", customerId);
+
+    if (!open) return;
+
+    // Defines an async function that will request a new SetupIntent from the backend.
+    const loadSetupIntent = async () => {
+      try {
+        // Calls the backend stripeSetupIntentPayments.js to create a new SetupIntent
+        // for this customerId
+        // https://docs.stripe.com/api/setup_intents/create
+        const dataSetupIntent = await createSetupIntentApi(customerId);
+        console.log("SetupIntent loaded:", dataSetupIntent);
+        // Stores the client secret returned by Stripe.
+        // The client secret is required by Stripe.js  to confirm the SetupIntent on the frontend.
+        // https://www.w3tutorials.net/blog/how-can-i-fetch-the-client-secret-in-stripe-reactjs-and-why-can-t-i-render-a-payment-form-without-it/
+        setClientSecret(dataSetupIntent.clientSecret);
+      } catch (err) {
+        console.error("Failed to load setup intent:", err);
+      }
+    };
+    // Immediately calls the function to fetch the SetupIntent when the dialog opens.
+    loadSetupIntent();
+  }, [open, customerId]);
+
   return (
     <Dialog
       open={open}
@@ -53,7 +107,24 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ open, onClose }) => {
           py: 3,
         }}
       >
-        <StripeCheckOut />{" "}
+        {/**
+         * Render the StripeCheckOut component only after we have received a valid clientSecret from the backend.
+         * The clientSecret is required by Stripe.js to securely confirm the SetupIntent.
+         * When the user successfully submits their card details, Stripe returns a paymentMethodId.
+         * The onSuccess callback then saves this payment method to our backend/Supabase by calling
+         * the savePaymentMethodApi() in the user-booking-api.ts file, associating the card with the current user.
+         * */}
+        {clientSecret && (
+          <StripeCheckOut
+            clientSecret={clientSecret}
+            onSuccess={async (paymentMethodId) => {
+              await savePaymentMethodApi({
+                userId: profile?.id,
+                paymentMethodId,
+              });
+            }}
+          />
+        )}
       </DialogContent>
 
       <DialogActions>

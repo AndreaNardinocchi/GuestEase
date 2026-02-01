@@ -1,9 +1,12 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { Box, TextField, Button, Typography } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { RoomDetailsCardProps } from "../../types/interfaces";
 import AlertDialogSlide from "../roomStayPolicyModal/roomStayPolicyModal";
 import PaymentDialog from "../stripeCheckOutModal/stripeCheckOutModal";
+import { AuthContext } from "../../contexts/authContext";
+import { useUserProfile } from "../../hooks/useFetchingUserProfile"; // adjust path if needed
+import { createStripeCustomerApi } from "../../api/user-booking-api";
 
 /**
  * RoomDetailsCard Component is used in the Room Details page, and it
@@ -28,6 +31,11 @@ const RoomDetailsCard: React.FC<RoomDetailsCardProps> = ({
   setCheckOut,
   onBook,
 }) => {
+  const auth = useContext(AuthContext);
+  const { user } = auth || {};
+
+  const { data: profile } = useUserProfile(user?.id);
+
   /**
    * Generate today's date in YYYY-MM-DD format
    * Date.toISOString():
@@ -47,7 +55,15 @@ const RoomDetailsCard: React.FC<RoomDetailsCardProps> = ({
   const handleOpenPolicy = () => setPolicyOpen(true);
   const handleClosePolicy = () => setPolicyOpen(false);
 
-  const handleStripeModalOpen = () => setStripeTestOpen(true);
+  const handleStripeModalOpen = async () => {
+    await createStripeCustomerApi({
+      email: user?.email!,
+      userId: user?.id!,
+    });
+
+    setStripeTestOpen(true);
+  };
+
   const handleStripeModalClose = () => setStripeTestOpen(false);
 
   return (
@@ -249,7 +265,11 @@ const RoomDetailsCard: React.FC<RoomDetailsCardProps> = ({
         </Box>
       </Box>
       <AlertDialogSlide open={policyOpen} onClose={handleClosePolicy} />
-      <PaymentDialog open={stripeTestOpen} onClose={handleStripeModalClose} />
+      <PaymentDialog
+        open={stripeTestOpen}
+        onClose={handleStripeModalClose}
+        customerId={profile?.stripe_customer_id}
+      />
     </Box>
   );
 };

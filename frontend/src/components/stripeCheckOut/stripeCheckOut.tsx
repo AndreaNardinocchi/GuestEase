@@ -72,6 +72,8 @@ const StripeCheckOut: React.FC<StripeCheckoutProps> = ({
       return;
     }
 
+    console.log("clientSecret:", clientSecret);
+
     /**
      * Confirms the SetupIntent using the card details and billing info.
      * This step securely exchanges card data with Stripe.
@@ -92,8 +94,8 @@ const StripeCheckOut: React.FC<StripeCheckoutProps> = ({
     }
     /**
      * If the SetupIntent completed successfully and Stripe returned a payment method ID,
-     * call onSuccess callback so the parent component can handle the next step:
-     * maybe storing the payment method on supabase? IN PROGRESS.........
+     * call onSuccess callback so the parent component can handle the next step which is
+     * storing the payment method details
      */
     if (onSuccess && setupIntent.payment_method) {
       onSuccess(setupIntent.payment_method as string);

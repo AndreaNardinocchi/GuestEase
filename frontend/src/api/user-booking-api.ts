@@ -173,3 +173,62 @@ export const createSetupIntentApi = async (customerId: string) => {
   // Expected: { clientSecret: "seti_123_secret_abc" }
   return data;
 };
+
+/**
+ * Creates a Stripe customer for the user if they don't already have one.
+ * https://docs.stripe.com/api/customers/create
+ */
+export const createStripeCustomerApi = async (params: {
+  email: string;
+  userId: string;
+}) => {
+  const res = await fetch("http://localhost:3000/create-stripe-customer", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to create Stripe customer");
+  }
+
+  // Expected: { customerId: "cus_123" }
+  return data;
+};
+
+/**
+ * This helper sends the paymentMethodId + userId to the backend so it can be stored
+ * in the user_payment_methods table.
+ * https://docs.stripe.com/payments/save-and-reuse
+ */
+export const savePaymentMethodApi = async (params: {
+  userId: string;
+  paymentMethodId: string;
+}) => {
+  const res = await fetch("http://localhost:3000/save-payment-method", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    /**
+     * Convert the object into JSON before sending.
+     * Express.json() on the backend will parse this automatically.
+     */
+    body: JSON.stringify(params),
+  });
+
+  /**
+   * Parse the JSON response from the backend.
+   */
+  const data = await res.json();
+
+  /**
+   * If the HTTP status is not in the 200–299 range,
+   * throw an error so the frontend can handle it.
+   */
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to save payment method");
+  }
+  // Expected: { success: true }
+  return data;
+};

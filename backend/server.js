@@ -11,8 +11,10 @@ import userCreateBookings from "./routes/userCreateBookings.js";
 import userCancelBookings from "./routes/userCancelBookings.js";
 import userUpdateBookings from "./routes/userUpdateBookings.js";
 import emailPlaceholder from "./routes/emailPlaceholder.js";
-import stripePayments from "./routes/stripePayments.js";
+import stripePayments from "./routes/stripeSetupIntentPayments.js";
 import userDeleteAccount from "./routes/userDeleteAccount.js";
+import stripeSavePayment from "./routes/stripeSavePaymentMethod.js";
+import createStripeCustomer from "./routes/createStripeCustomer.js";
 
 // --------------------
 // ENV SETUP
@@ -55,6 +57,8 @@ app.use(userCancelBookings);
 app.use(emailPlaceholder);
 app.use(stripePayments);
 app.use(userDeleteAccount);
+app.use(stripeSavePayment);
+app.use(createStripeCustomer);
 
 /* --------------------
    START SERVER
