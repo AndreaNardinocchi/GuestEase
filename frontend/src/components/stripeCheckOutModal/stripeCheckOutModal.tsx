@@ -121,19 +121,17 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
          * The onSuccess callback then saves this payment method to our backend/Supabase by calling
          * the savePaymentMethodApi() in the user-booking-api.ts file, associating the card with the current user.
          * */}
-        {clientSecret && (
-          <StripeCheckOut
-            clientSecret={clientSecret}
-            onSuccess={async (paymentMethodId) => {
-              await savePaymentMethodApi({
-                userId: profile?.id,
-                paymentMethodId,
-              });
-              // Notify the parent component that payment succeeded so it can create the booking now
-              onSuccess(paymentMethodId);
-            }}
-          />
-        )}
+        <StripeCheckOut
+          clientSecret={clientSecret}
+          onSuccess={async (paymentMethodId) => {
+            await savePaymentMethodApi({
+              userId: profile?.id,
+              paymentMethodId,
+            });
+            // Notify the parent component that payment succeeded so it can create the booking now
+            onSuccess(paymentMethodId);
+          }}
+        />
       </DialogContent>
 
       <DialogActions>

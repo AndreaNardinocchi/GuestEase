@@ -104,18 +104,6 @@ const RoomDetailsPage: React.FC = () => {
     }
   }, [room]);
 
-  if (roomLoading) {
-    return <CircularProgress sx={{ display: "block", mx: "auto", my: 10 }} />;
-  }
-
-  if (roomError || !room) {
-    return <Alert severity="error">Room not found.</Alert>;
-  }
-
-  if (availabilityError) {
-    return <Alert severity="error">Error loading availability.</Alert>;
-  }
-
   /**
    * Controls the stripeCheckOutModal payment dialog.
    * When true, the PaymentDialog component (stripeCheckOutModal) opens and begins the
@@ -211,46 +199,71 @@ const RoomDetailsPage: React.FC = () => {
       setStripeCheckOutModalOpen(false);
     }
   };
+
+  /**
+   * These early returns are safe because all hooks in this component
+   * are declared above them. Previously, they appeared before several
+   * useState/useEffect calls, which caused React to run a different
+   * number of hooks between renders and triggered a hook‑order error.
+   * Now the hook order is stable:
+   * 1. Hooks always run first
+   * 2. These returns only affect what UI is shown
+   * 3. React never sees a different hook sequence
+   */
+  if (roomLoading) {
+    return <CircularProgress sx={{ display: "block", mx: "auto", my: 10 }} />;
+  }
+
+  if (roomError || !room) {
+    return <Alert severity="error">Room not found.</Alert>;
+  }
+
+  if (availabilityError) {
+    return <Alert severity="error">Error loading availability.</Alert>;
+  }
+
   return (
     <>
-      <Box>
-        {/* This hero image will be replaced by a carousel to display all 4 room images */}
-        {room.images.length > 0 && (
+      {/* Main UI only when everything is valid */}
+
+      <>
+        <Box>
+          {/* This hero image will be replaced by a carousel to display all 4 room images */}
           <RoomDetailsCarousel
             images={room.images.map((img: any) =>
               getPublicUrl(`/rooms/${room.id}/${img}`),
             )}
           />
-        )}
-      </Box>
+        </Box>
 
-      <Container maxWidth="lg">
-        {/* We will show the error on top of the page */}
-        {error && (
-          <Alert severity="error" sx={{ my: 2 }}>
-            {error}
-          </Alert>
-        )}
+        <Container maxWidth="lg">
+          {/* We will show the error on top of the page */}
+          {error && (
+            <Alert severity="error" sx={{ my: 2 }}>
+              {error}
+            </Alert>
+          )}
 
-        <RoomDetailsCard
-          room={room}
-          guests={guests}
-          checkIn={checkIn}
-          checkOut={checkOut}
-          setGuests={setGuests}
-          setCheckIn={setCheckIn}
-          setCheckOut={setCheckOut}
-          onBook={handleBook}
-        />
-        {/* Stripe Payment Dialo opens after validation and before booking creation */}
-        <PaymentDialog
-          open={stripeCheckOutModalOpen}
-          onClose={() => setStripeCheckOutModalOpen(false)}
-          customerId={profile?.stripe_customer_id || ""}
-          // Passed through from the stripeCheckOut
-          onSuccess={handlePaymentSuccessSoBookNow}
-        />
-      </Container>
+          <RoomDetailsCard
+            room={room}
+            guests={guests}
+            checkIn={checkIn}
+            checkOut={checkOut}
+            setGuests={setGuests}
+            setCheckIn={setCheckIn}
+            setCheckOut={setCheckOut}
+            onBook={handleBook}
+          />
+
+          {/* Stripe Payment Dialog opens after validation and before booking creation */}
+          <PaymentDialog
+            open={stripeCheckOutModalOpen}
+            onClose={() => setStripeCheckOutModalOpen(false)}
+            customerId={profile?.stripe_customer_id || ""}
+            onSuccess={handlePaymentSuccessSoBookNow}
+          />
+        </Container>
+      </>
     </>
   );
 };

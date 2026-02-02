@@ -14,7 +14,7 @@ import { CardElement, useElements, useStripe } from "@stripe/react-stripe-js";
 
 interface StripeCheckoutProps {
   // The client secret returned from your backend when creating a SetupIntent.
-  clientSecret: string;
+  clientSecret: string | null;
   // Receives the ID of the confirmed payment method.
   onSuccess?: (paymentMethodId: string) => void;
 }
@@ -28,6 +28,8 @@ const StripeCheckOut: React.FC<StripeCheckoutProps> = ({
   clientSecret,
   onSuccess,
 }) => {
+  if (!clientSecret) return null;
+
   /**
    * 'The useStripe hook returns a reference to the Stripe instance passed to the Elements provider.'
    * https://docs.stripe.com/sdks/stripejs-react?ui=elements#usestripe-hook

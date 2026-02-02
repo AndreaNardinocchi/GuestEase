@@ -29,6 +29,7 @@ const App = () => {
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/update-password" element={<UpdatePasswordPage />} />
         <Route path="/room/:roomId" element={<RoomDetails />} />
+
         <Route
           path="/account/profile"
           element={
