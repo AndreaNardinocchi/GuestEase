@@ -137,7 +137,7 @@ const AuthContextProvider: React.FC<React.PropsWithChildren> = (props) => {
       console.error("Failed to restore session");
       return;
     }
-
+    setUser(null);
     setToken(null);
     navigate("/");
   };

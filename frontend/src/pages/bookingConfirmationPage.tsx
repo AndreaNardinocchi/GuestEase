@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -21,10 +21,15 @@ import { useQuery } from "@tanstack/react-query";
 import { getPublicUrl } from "../utils/supabaseAssetsStorage";
 import { calculateNumberOfNights } from "../utils/calculateNumberOfNights";
 import { Link as RouterLink } from "react-router-dom";
+import { AuthContext } from "../contexts/authContext";
 
 const BookingConfirmationPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+
+  // Get current logged‑in user (
+  const auth = useContext(AuthContext);
+  const currentUser = auth?.user;
 
   /**
    * Once again we make use of the useQuery() function to catch data
@@ -61,6 +66,15 @@ const BookingConfirmationPage: React.FC = () => {
     enabled: !!bookingQuery.data?.room_id,
     queryFn: () => getRoomById(bookingQuery.data!.room_id),
   });
+
+  // This will 'protect' the booking confirmation from an unauthorized user
+  useEffect(() => {
+    const booking = bookingQuery.data;
+
+    if (booking && currentUser && booking.user_id !== currentUser.id) {
+      navigate("/");
+    }
+  }, [bookingQuery.data, currentUser, navigate]);
 
   // Browser title
   useEffect(() => {
