@@ -199,6 +199,19 @@ const RoomDetailsCard: React.FC<RoomDetailsCardProps> = ({
             >
               Book Now
             </Button>
+            <Typography
+              variant="caption"
+              sx={{
+                display: "block",
+                textAlign: "center",
+                mt: 1,
+                color: "text.secondary",
+                fontStyle: "italic",
+              }}
+            >
+              Your card will be automatically charged within 24 hours before
+              check‑in.
+            </Typography>
           </Box>
         </Box>
 

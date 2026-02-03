@@ -51,7 +51,7 @@ const BookedRoomCard: React.FC<BookingCardProps> = ({
   // If true, the user can cancel, if false the cancel button will be grey and disanled
   const canCancelUpdate = today < cutoff;
 
-  console.log("canCancel: ", canCancelUpdate);
+  console.log("canCancelUpdate: ", canCancelUpdate);
 
   return (
     <Card

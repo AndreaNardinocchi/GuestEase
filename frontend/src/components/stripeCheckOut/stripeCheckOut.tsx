@@ -110,33 +110,54 @@ const StripeCheckOut: React.FC<StripeCheckoutProps> = ({
         maxWidth: 420,
         mx: "auto",
         mt: 4,
-        p: 2,
+
+        p: 3,
         borderRadius: 3,
-        boxShadow: 4,
+        boxShadow: 5,
+        backgroundColor: "#fff",
       }}
     >
       <CardHeader
         title={
-          <Typography variant="h6" component="h2" textAlign="center">
+          <Typography
+            variant="h6"
+            component="h2"
+            textAlign="center"
+            sx={{ fontWeight: 600 }}
+          >
             Secure Payment
+          </Typography>
+        }
+        subheader={
+          <Typography
+            variant="body2"
+            textAlign="center"
+            sx={{ color: "text.secondary" }}
+          >
+            Your card details are encrypted and processed safely by Stripe.
           </Typography>
         }
       />
 
       <CardContent>
+        {/***
+         * The Stripe card element will added here
+         * https://docs.stripe.com/sdks/stripejs-react#cardelement
+         */}
         <form onSubmit={handleSubmit}>
-          {/***
-           * The Stripe card element will added here
-           * https://docs.stripe.com/sdks/stripejs-react#cardelement
-           */}
+          <Typography
+            variant="subtitle2"
+            sx={{ mb: 1, color: "text.secondary", fontWeight: 500 }}
+          >
+            Card Information
+          </Typography>
+
           <Box
             sx={{
               p: 2,
               border: "1px solid #ccc",
               borderRadius: 2,
-              mb: 2,
-              textAlign: "center",
-              color: "#777",
+              backgroundColor: "#fafafa",
             }}
           >
             {/**
@@ -148,21 +169,31 @@ const StripeCheckOut: React.FC<StripeCheckoutProps> = ({
              * https://docs.stripe.com/sdks/stripejs-react?ui=elements
              * https://stackoverflow.com/questions/46863072/do-not-collect-zip-code-with-stripe
              * */}
-            <CardElement options={{ hidePostalCode: true }} />
+            <CardElement
+              options={{
+                hidePostalCode: true,
+                style: {
+                  base: {
+                    fontSize: "16px",
+                    color: "#333",
+                    "::placeholder": { color: "#999" },
+                  },
+                },
+              }}
+            />
           </Box>
 
-          {/** Postal code input field */}
           <TextField
             label="Postal / ZIP code"
             value={postalCode}
             onChange={(e) => setPostalCode(e.target.value)}
             fullWidth
             margin="normal"
+            sx={{ mb: 2 }}
           />
 
-          {/** Error message display */}
           {error && (
-            <Alert severity="error" sx={{ my: 2 }}>
+            <Alert severity="error" sx={{ mb: 2 }}>
               {error}
             </Alert>
           )}
@@ -176,12 +207,22 @@ const StripeCheckOut: React.FC<StripeCheckoutProps> = ({
               py: 1.5,
               borderRadius: 2,
               backgroundColor: "#472d30",
-              color: "#fff",
+              fontWeight: 600,
               "&:hover": { backgroundColor: "#e26d5c" },
             }}
           >
-            {loading ? <CircularProgress size={26} /> : "Pay Now"}
+            {loading ? <CircularProgress size={26} /> : "Save Payment Method"}
           </Button>
+
+          <Typography
+            variant="caption"
+            display="block"
+            textAlign="center"
+            sx={{ mt: 2, color: "text.secondary" }}
+          >
+            We never store your card number. All payments are handled securely
+            by Stripe.
+          </Typography>
         </form>
       </CardContent>
     </Card>

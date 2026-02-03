@@ -54,7 +54,11 @@ export default function AlertDialogSlide({
           <br />
           ✓ A valid government‑issued ID is required at check‑in.
           <br />
-          ✓ The payment method used at booking must be presented upon arrival.
+          ✓ Your card will be automatically charged within 24 hours before
+          check‑in.
+          <br />
+          ✓ Reservations cannot be updated or cancelled within 24 hours before
+          check‑in.
           <br />
           ✓ Guests are responsible for any damages caused during their stay.
           <br />
@@ -63,11 +67,6 @@ export default function AlertDialogSlide({
           ✓ Pets are permitted only in designated pet‑friendly rooms.
           <br />
           ✓ Quiet hours are enforced from 10:00 PM to 7:00 AM.
-          <br />
-          ✓ Cancellations are not permitted within 24 hours of check‑in.
-          <br />
-          ✓ Your payment process will be updated too, reflecting any changes to
-          your stay.
           <br />
           <br />
           By continuing, you acknowledge and agree to these terms.

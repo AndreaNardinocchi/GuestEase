@@ -241,6 +241,19 @@ const BookingConfirmationPage: React.FC = () => {
                   >
                     Back to Home
                   </Button>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      display: "block",
+                      textAlign: "center",
+                      mt: 1,
+                      color: "text.secondary",
+                      fontStyle: "italic",
+                    }}
+                  >
+                    Please note: reservations cannot be modified or cancelled
+                    within 24 hours of check‑in.
+                  </Typography>
                 </CardContent>
               </Card>
             </Box>

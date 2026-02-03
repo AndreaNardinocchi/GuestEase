@@ -128,6 +128,9 @@ const RoomDetailsPage: React.FC = () => {
       return;
     }
 
+    // Do not validate yet
+    if (!availability) return;
+
     /**
      *'The some() method of Array instances returns true if it finds one element in the array
      * that satisfies the provided testing function. Otherwise, it returns false.'
@@ -139,6 +142,7 @@ const RoomDetailsPage: React.FC = () => {
       setError("This room is not available for the selected dates.");
       return;
     }
+
     try {
       /**
        * To be able to book, a user must be logged in, therefore, we need
@@ -172,6 +176,11 @@ const RoomDetailsPage: React.FC = () => {
       setError(err.message);
     }
   };
+
+  // This hook will clear the !isAvailable error once the user selected available dates
+  useEffect(() => {
+    setError(null);
+  }, [checkIn, checkOut, guests]);
 
   /**
    * This callback is called after the user successfully completes
