@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
+  Button,
   CircularProgress,
   Container,
   Paper,
+  Snackbar,
   Table,
   TableBody,
   TableCell,
@@ -12,11 +14,23 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRoomName } from "../utils/getRoomName";
 import { getAllBookings, getRooms } from "../api/guestease-api";
+import { Booking, Room } from "../types/interfaces";
+import AdminBookingModal from "../components/adminBookingModal/adminBookingModal";
+import { adminCreateBookingApi } from "../api/admin-booking-api";
 
 const AdminBookingsPage: React.FC = () => {
+  // Controls visibility of the booking modal
+  const [openBookingModal, setOpenBookingModal] = useState(false);
+  // Holds the booking currently being edited (null = create mode)
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  // React Query client used for cache invalidation after mutations
+  const queryClient = useQueryClient();
+  // Controls visibility of the success snackbar
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+
   /**
    * React Query is a data-fetching and caching library that simplifies working with
    * asynchronous data in React applications. Instead of manually managing loading states,
@@ -48,6 +62,57 @@ const AdminBookingsPage: React.FC = () => {
     queryFn: getRooms,
   });
 
+  // Browser title
+  useEffect(() => {
+    document.title = `Bookings Admin Dashboard | GuestEase`;
+  });
+
+  // Local state for the booking form fields
+  const [bookingForm, setBookingForm] = useState({
+    room_id: "",
+    user_email: "",
+    check_in: "",
+    check_out: "",
+    guests: "",
+  });
+
+  // Opens the modal in 'create' mode and resets the form
+  const handleOpenCreateBooking = () => {
+    setEditingBooking(null);
+    setBookingForm({
+      room_id: "",
+      user_email: "",
+      check_in: "",
+      check_out: "",
+      guests: "",
+    });
+    setOpenBookingModal(true);
+  };
+
+  // Handles creating a new booking through the admin API
+  const handleSaveBooking = async () => {
+    try {
+      const newBooking = {
+        room_id: bookingForm.room_id,
+        user_email: bookingForm.user_email,
+        check_in: bookingForm.check_in,
+        check_out: bookingForm.check_out,
+        guests: Number(bookingForm.guests),
+      };
+      // Sends booking to the backend
+      await adminCreateBookingApi(newBooking);
+      // This clears out the cache and alloes us to see the created booking without having to refresh the page
+      // https://tanstack.com/query/v4/docs/framework/react/guides/query-invalidation
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      // Message to confirm the booking has beeen created
+      setSnackbarOpen(true);
+
+      setOpenBookingModal(false);
+    } catch (err: any) {
+      alert(err.message || "Something went wrong");
+    }
+  };
+
   if (bookingsLoading || roomsLoading) {
     return (
       <Container>
@@ -71,8 +136,15 @@ const AdminBookingsPage: React.FC = () => {
   return (
     <>
       <Container maxWidth="xl" sx={{ pb: 8 }}>
-        <Box my={4}>
+        <Box my={4} display="flex" justifyContent="space-between">
           <Typography variant="h4">Bookings</Typography>
+          <Button
+            variant="contained"
+            sx={{ backgroundColor: "#e26d5c" }}
+            onClick={handleOpenCreateBooking}
+          >
+            + Create Booking
+          </Button>
         </Box>
 
         {/**
@@ -130,6 +202,23 @@ const AdminBookingsPage: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
+
+        <AdminBookingModal
+          open={openBookingModal}
+          onClose={() => setOpenBookingModal(false)}
+          onSave={handleSaveBooking}
+          rooms={rooms ?? []}
+          editingBooking={editingBooking}
+          bookingForm={bookingForm}
+          setBookingForm={setBookingForm}
+        />
+        {/* https://mui.com/material-ui/react-snackbar/ */}
+        <Snackbar
+          open={snackbarOpen}
+          autoHideDuration={3000}
+          onClose={() => setSnackbarOpen(false)}
+          message="Booking created successfully!"
+        />
       </Container>
     </>
   );

@@ -493,3 +493,41 @@ export interface BookingWithUser {
   created_at: string;
   charged: boolean;
 }
+
+/**
+ * Props for the AdminBookingModal component.
+ * Defines all data and handlers required to display and manage the
+ * admin booking form modal.
+ */
+export interface BookingModalProps {
+  open: boolean;
+  onClose: () => void;
+  onSave: () => void;
+  // List of available rooms used to populate the room dropdown
+  rooms: Room[];
+  // If provided, the modal is in "edit" mode; otherwise it's creating a new booking
+  editingBooking: Booking | null;
+  // Current values of the booking form fields
+  bookingForm: {
+    room_id: string;
+    user_email: string;
+    check_in: string;
+    check_out: string;
+    guests: string;
+  };
+  /**
+   * State setter used to update individual booking form fields.
+   * Passed down from the parent so the modal can modify form state.
+   * http://stackoverflow.com/questions/65823778/ddg#65824149
+   * https://www.xjavascript.com/blog/how-can-i-define-type-for-setstate-when-react-dispatch-react-setstateaction-string-not-accepted/
+   */
+  setBookingForm: React.Dispatch<
+    React.SetStateAction<{
+      room_id: string;
+      user_email: string;
+      check_in: string;
+      check_out: string;
+      guests: string;
+    }>
+  >;
+}

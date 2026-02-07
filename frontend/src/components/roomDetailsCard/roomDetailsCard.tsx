@@ -34,6 +34,18 @@ const RoomDetailsCard: React.FC<RoomDetailsCardProps> = ({
    */
   const today = new Date().toISOString().split("T")[0];
 
+  /**
+   * Compute the minimum allowed check-out date.
+   * If check-in is selected next day after check-in is
+   * the minimum allowed date possible.
+   * If not, then, 'tomorrow'
+   * */
+  const nextDayAfterCheckIn = checkIn
+    ? new Date(new Date(checkIn).setDate(new Date(checkIn).getDate() + 1))
+        .toISOString()
+        .split("T")[0]
+    : null;
+
   // useState to manage the roomStayPolicyModal
   const [policyOpen, setPolicyOpen] = useState(false);
 
@@ -158,7 +170,7 @@ const RoomDetailsCard: React.FC<RoomDetailsCardProps> = ({
               fullWidth
               slotProps={{
                 input: {
-                  inputProps: { min: checkIn || today },
+                  inputProps: { min: nextDayAfterCheckIn },
                 },
                 inputLabel: { shrink: true },
               }}
