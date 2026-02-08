@@ -22,7 +22,7 @@ export const adminCreateUserApi = async (userForm: {
     // We needed to throw an error to prevent the snackbar from popping up even
     // when the user being created was using an existing email and would fail
     throw new Error(data.error || "Failed to save user");
-    return;
+    // return;
   }
 
   return data;
@@ -49,6 +49,25 @@ export const adminUpdateUserApi = async (userForm: {
 
   if (!res.ok) {
     throw new Error(data.error || "Failed to update user");
+  }
+
+  return data;
+};
+
+/**
+ * Delete User (Admin)
+ */
+export const adminDeleteUserApi = async (id: string, role: string | null) => {
+  const res = await fetch("http://localhost:3000/admin/delete-user", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId: id }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to delete user");
   }
 
   return data;

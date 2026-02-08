@@ -17,8 +17,13 @@ import {
 } from "@mui/material";
 import { getUsers } from "../api/guestease-api";
 import { countries, User } from "../types/interfaces";
-import { adminCreateUserApi, adminUpdateUserApi } from "../api/admin-users-api";
+import {
+  adminCreateUserApi,
+  adminDeleteUserApi,
+  adminUpdateUserApi,
+} from "../api/admin-users-api";
 import AdminUserModal from "../components/adminUserModal/adminUserModal";
+import AlertDialogSlide from "../components/deleteUserConfirm/deleteUserConfirm";
 
 /**
  * This is the admin users page wher all users can be viewed, created, updated and deleted
@@ -28,6 +33,16 @@ import AdminUserModal from "../components/adminUserModal/adminUserModal";
 const AdminUsersPage: React.FC = () => {
   const [openUserModal, setOpenUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+
+  // Controls whether the delete‑confirmation dialog is visible
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  // Holds the ID of the user the user intends to delete
+  // const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const [userToDelete, setUserToDelete] = useState<{
+    id: string;
+    role: string | null;
+  } | null>(null);
 
   // React Query client used for cache invalidation after mutations
   const queryClient = useQueryClient();
@@ -146,6 +161,34 @@ const AdminUsersPage: React.FC = () => {
     }
   };
 
+  // This handles the delte confirmation modal
+  const handleOpenDeleteUser = (id: string, role: string | null) => {
+    setUserToDelete({ id, role });
+    setDeleteDialogOpen(true);
+  };
+
+  // This handles the delete user logic
+  const handleDeleteUser = async (id: string, role: string | null) => {
+    // if no user to delete, stop
+    if (!userToDelete) return;
+    try {
+      await adminDeleteUserApi(id, role);
+      // This clears out the cache and allows us to remove instantly the user on the UI
+      // https://tanstack.com/query/v4/docs/framework/react/guides/query-invalidation
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      // Message to confirm the user has beeen deleted
+      setSnackbarMessage("User deleted successfully!");
+      setSnackbarOpen(true);
+      setOpenUserModal(false);
+    } catch (err: any) {
+      alert(err.message || "Something went wrong");
+    } finally {
+      // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch#syntax
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
+    }
+  };
+
   if (isLoading) {
     return (
       <Container>
@@ -233,7 +276,11 @@ const AdminUsersPage: React.FC = () => {
                   >
                     Update
                   </Button>
-                  <Button variant="outlined" color="error">
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    onClick={() => handleOpenDeleteUser(u.id, u.role)}
+                  >
                     Delete
                   </Button>
                 </TableCell>
@@ -258,6 +305,15 @@ const AdminUsersPage: React.FC = () => {
         autoHideDuration={3000}
         onClose={() => setSnackbarOpen(false)}
         message={snackbarMessage}
+      />
+      <AlertDialogSlide
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={async () => {
+          // We state that these 2 values are not null via the non‑null assertion operator
+          // https://learntypescript.dev/07/l2-non-null-assertion-operator
+          handleDeleteUser(userToDelete!.id, userToDelete!.role);
+        }}
       />
     </Container>
   );

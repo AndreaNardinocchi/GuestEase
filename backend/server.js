@@ -5,9 +5,10 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import adminUsersPlaceholder from "./routes/adminUsersPlaceholder.js";
+import adminDeleteUsers from "./routes/adminDeleteUsers.js";
 import adminCreateBookings from "./routes/adminCreateBookings.js";
 import adminCreateUsers from "./routes/adminCreateUsers.js";
+import adminUpdateUsers from "./routes/adminUpdateUsers.js";
 import adminUpdateBookings from "./routes/adminUpdateBookings.js";
 import adminCancelBookings from "./routes/adminCancelBookings.js";
 import userCreateBookings from "./routes/userCreateBookings.js";
@@ -18,7 +19,6 @@ import stripePayments from "./routes/stripeSetupIntentPayments.js";
 import userDeleteAccount from "./routes/userDeleteAccount.js";
 import stripeSavePayment from "./routes/stripeSavePaymentMethod.js";
 import createStripeCustomer from "./routes/createStripeCustomer.js";
-import adminUpdateUsers from "./routes/adminUpdateUsers.js";
 
 // --------------------
 // ENV SETUP
@@ -53,13 +53,14 @@ app.use((req, res, next) => {
  * https://expressjs.com/en/4x/api.html#router
  *
  * */
-app.use(adminUsersPlaceholder);
+app.use(adminDeleteUsers);
 app.use(adminCreateBookings);
 app.use(adminUpdateBookings);
 app.use(adminCancelBookings);
 app.use(userCreateBookings);
 app.use(userCancelBookings);
 app.use(userUpdateBookings);
+app.use(userCancelBookings);
 app.use(emailPlaceholder);
 app.use(stripePayments);
 app.use(userDeleteAccount);

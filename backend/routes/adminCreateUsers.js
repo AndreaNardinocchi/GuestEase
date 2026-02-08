@@ -24,12 +24,11 @@ router.post("/admin/create-user", async (req, res) => {
     await supabase.auth.admin.listUsers();
 
   // If Supabase Auth fails, return an error
+
   if (authError) {
-    if (authError) {
-      return res
-        .status(500)
-        .json({ error: "Failed to fetch users from Supabase Auth" });
-    }
+    return res
+      .status(500)
+      .json({ error: "Failed to fetch users from Supabase Auth" });
   }
 
   // Find the user in the Auth list by matching email
@@ -88,6 +87,7 @@ router.post("/admin/create-user", async (req, res) => {
       id: authUser.id,
       email: authUser.email,
       stripe_customer_id: stripeCustomerId,
+      role: role,
     });
 
     if (profileError) {
