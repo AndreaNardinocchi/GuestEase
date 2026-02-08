@@ -17,7 +17,7 @@ import {
 } from "@mui/material";
 import { getUsers } from "../api/guestease-api";
 import { countries, User } from "../types/interfaces";
-import { adminCreateUserApi } from "../api/admin-users-api";
+import { adminCreateUserApi, adminUpdateUserApi } from "../api/admin-users-api";
 import AdminUserModal from "../components/adminUserModal/adminUserModal";
 
 /**
@@ -26,9 +26,6 @@ import AdminUserModal from "../components/adminUserModal/adminUserModal";
  */
 
 const AdminUsersPage: React.FC = () => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-
   const [openUserModal, setOpenUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
@@ -89,7 +86,7 @@ const AdminUsersPage: React.FC = () => {
     setOpenUserModal(true);
   };
 
-  const handleSaveUser = async () => {
+  const handleCreateUser = async () => {
     try {
       const newUser = {
         first_name: userForm.first_name,
@@ -100,12 +97,48 @@ const AdminUsersPage: React.FC = () => {
         zip_code: userForm.zip_code,
       };
       await adminCreateUserApi(newUser);
-      // This clears out the cache and alloes us to see the created booking without having to refresh the page
+      // This clears out the cache and allow us to see the created user without having to refresh the page
       // https://tanstack.com/query/v4/docs/framework/react/guides/query-invalidation
       queryClient.invalidateQueries({ queryKey: ["users"] });
-      // Message to confirm the booking has beeen created
-
+      // Message to confirm the user has beeen created
       setSnackbarMessage("User created successfully!");
+      setSnackbarOpen(true);
+      setOpenUserModal(false);
+    } catch (err: any) {
+      alert(err.message || "Something went wrong");
+    }
+  };
+
+  // This time the form is filled as we are updating an existing user
+  const handleOpenUpdateUser = (u: User) => {
+    setEditingUser(u);
+    setUserForm({
+      first_name: u.first_name ?? "",
+      last_name: u.last_name ?? "",
+      email: u.email ?? "",
+      role: u.role || "guest",
+      country: u.country ?? "",
+      zip_code: u.zip_code ?? "",
+    });
+    setOpenUserModal(true);
+  };
+
+  const handleUpdateUser = async () => {
+    try {
+      const updatedUser = {
+        first_name: userForm.first_name,
+        last_name: userForm.last_name,
+        email: userForm.email,
+        role: userForm.role,
+        country: userForm.country,
+        zip_code: userForm.zip_code,
+      };
+      await adminUpdateUserApi(updatedUser);
+      // This clears out the cache and allow us to see the updated user without having to refresh the page
+      // https://tanstack.com/query/v4/docs/framework/react/guides/query-invalidation
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      // Message to confirm the user has been updated
+      setSnackbarMessage("User updated successfully!");
       setSnackbarOpen(true);
       setOpenUserModal(false);
     } catch (err: any) {
@@ -171,6 +204,7 @@ const AdminUsersPage: React.FC = () => {
               <TableCell sx={{ fontWeight: "bold" }}>Zip Code</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Role</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Created At</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}></TableCell>
             </TableRow>
           </TableHead>
 
@@ -191,6 +225,18 @@ const AdminUsersPage: React.FC = () => {
                 <TableCell>{u.zip_code}</TableCell>
                 <TableCell>{u.role}</TableCell>
                 <TableCell>{new Date(u.created_at).toLocaleString()}</TableCell>
+                <TableCell>
+                  <Button
+                    variant="outlined"
+                    sx={{ mr: 1 }}
+                    onClick={() => handleOpenUpdateUser(u)}
+                  >
+                    Update
+                  </Button>
+                  <Button variant="outlined" color="error">
+                    Delete
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -199,7 +245,8 @@ const AdminUsersPage: React.FC = () => {
       <AdminUserModal
         open={openUserModal}
         onClose={() => setOpenUserModal(false)}
-        onSave={editingUser ? handleSaveUser : handleSaveUser}
+        // If editing the user than handle update user, otherwise create it
+        onSave={editingUser ? handleUpdateUser : handleCreateUser}
         countries={countries ?? []}
         editingUser={editingUser}
         userForm={userForm}

@@ -18,6 +18,31 @@ router.post("/admin/create-user", async (req, res) => {
     return res.status(400).json({ error: "Missing fields" });
   }
 
+  // Fetch all users from Supabase Auth
+  // https://supabase.com/docs/reference/javascript/auth-admin-listusers
+  const { data: list, error: authError } =
+    await supabase.auth.admin.listUsers();
+
+  // If Supabase Auth fails, return an error
+  if (authError) {
+    if (authError) {
+      return res
+        .status(500)
+        .json({ error: "Failed to fetch users from Supabase Auth" });
+    }
+  }
+
+  // Find the user in the Auth list by matching email
+  const user = list.users.find((u) => u.email === email);
+
+  // If no user with this email exists in Auth, return an error
+  // If a user with this email already exists, return a conflict error
+  if (user) {
+    return res
+      .status(409)
+      .json({ error: "User with this email already exists" });
+  }
+
   try {
     // Generate a temporary password for the new user
     const password = Math.random().toString(36).slice(-10);
@@ -56,19 +81,13 @@ router.post("/admin/create-user", async (req, res) => {
 
     /**
      * Upsert into 'profiles' table
-     * Ensures the profile row exists and stays synced with Auth + Stripe.
+     * Ensures the user column stripe_customer_id does have a value
      * https://supabase.com/docs/reference/javascript/upsert
      */
     const { error: profileError } = await supabase.from("profiles").upsert({
       id: authUser.id,
       email: authUser.email,
-      role: role || "user",
-      first_name,
-      last_name,
-      country,
-      zip_code,
       stripe_customer_id: stripeCustomerId,
-      created_at: new Date().toISOString(),
     });
 
     if (profileError) {
@@ -85,5 +104,4 @@ router.post("/admin/create-user", async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 });
-
 export default router;

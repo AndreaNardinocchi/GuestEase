@@ -18,6 +18,7 @@ import stripePayments from "./routes/stripeSetupIntentPayments.js";
 import userDeleteAccount from "./routes/userDeleteAccount.js";
 import stripeSavePayment from "./routes/stripeSavePaymentMethod.js";
 import createStripeCustomer from "./routes/createStripeCustomer.js";
+import adminUpdateUsers from "./routes/adminUpdateUsers.js";
 
 // --------------------
 // ENV SETUP
@@ -65,6 +66,7 @@ app.use(userDeleteAccount);
 app.use(stripeSavePayment);
 app.use(createStripeCustomer);
 app.use(adminCreateUsers);
+app.use(adminUpdateUsers);
 
 /* --------------------
    START SERVER
