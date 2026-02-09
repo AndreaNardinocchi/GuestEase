@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Box,
   Button,
@@ -17,6 +17,10 @@ import { useQuery } from "@tanstack/react-query";
 import { getRooms } from "../api/guestease-api";
 import { getPublicUrl } from "../utils/supabaseAssetsStorage";
 import { Link } from "react-router-dom";
+import AdminRoomModal from "../components/adminRoomModal/adminRoomModal";
+import AdminSubNav from "../components/adminSubNav/adminSubNav";
+import AdminDashboardHeader from "../components/adminDashboardHeader/adminDashboardHeader";
+import { useAdminCreateRoom } from "../hooks/useAdminCreateRoom";
 
 const AdminRoomsPage: React.FC = () => {
   /**
@@ -38,6 +42,68 @@ const AdminRoomsPage: React.FC = () => {
     isError,
     refetch,
   } = useQuery({ queryKey: ["rooms"], queryFn: getRooms });
+
+  // We create a state for the adminRoomModal
+  const [openRoomModal, setOpenRoomModal] = useState(false);
+
+  // This is the form state that the admin will fill out to create a room
+  // when the modal open
+  const [roomForm, setRoomForm] = useState({
+    name: "",
+    description: "",
+    amenities: "",
+    capacity: "",
+    price: "",
+  });
+
+  // This will handle the modal create room form
+  const handleOpenCreateRoom = () => {
+    setRoomForm({
+      name: "",
+      description: "",
+      amenities: "",
+      capacity: "",
+      price: "",
+    });
+    setOpenRoomModal(true);
+  };
+
+  // We use the useAdminCreateRoom hook
+  const createRoom = useAdminCreateRoom();
+
+  /**
+   * Create Room handler which builds a room payload,
+   * then triggers the React Query mutation.
+   * https://tanstack.com/query/latest/docs/framework/react/reference/useMutation
+   * */
+  const handleSaveRoom = () => {
+    // Normalize and prepare data for Supabase
+    const roomPayload = {
+      name: roomForm.name.trim(),
+      // trim(): https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/trim
+      description: roomForm.description.trim(),
+      amenities: roomForm.amenities
+        .split(",")
+        // Amenities are an array of strings
+        .map((a) => a.trim())
+        // .filter(Boolean) removes empty or falsy values from the array after splitting.
+        // https://www.geeksforgeeks.org/javascript/how-to-remove-falsy-values-from-an-array-in-javascript/
+        .filter(Boolean),
+      capacity: Number(roomForm.capacity),
+      price: Number(roomForm.price),
+    };
+    // Trigger mutation
+    // https://tanstack.com/query/latest/docs/framework/react/guides/mutations
+    // https://www.wisp.blog/blog/the-complete-guide-to-react-querys-usemutation-everything-you-need-to-know
+    createRoom.mutate(roomPayload, {
+      onSuccess: () => {
+        // Refresh rooms list
+        // https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
+        refetch();
+        setOpenRoomModal(false);
+      },
+    });
+  };
 
   if (isLoading) {
     return (
@@ -64,10 +130,20 @@ const AdminRoomsPage: React.FC = () => {
 
   return (
     <>
+      <AdminDashboardHeader />
+      <AdminSubNav />
       <Container sx={{ pb: 8 }}>
         <Box my={4} display="flex" justifyContent="space-between">
-          <Typography variant="h4">Rooms</Typography>{" "}
+          <Typography variant="h4">Rooms</Typography>
+          <Button
+            variant="contained"
+            sx={{ backgroundColor: "#e26d5c" }}
+            onClick={handleOpenCreateRoom}
+          >
+            + Create Room
+          </Button>
         </Box>
+
         {/* Table wrapper */}
         <TableContainer
           component={Paper}
@@ -87,12 +163,14 @@ const AdminRoomsPage: React.FC = () => {
                 </TableCell>
               </TableRow>
             </TableHead>
+
             <TableBody>
               {rooms?.map((r) => {
                 const images = r.images ?? [];
                 return (
                   <TableRow key={r.id}>
                     <TableCell>{r.id}</TableCell>
+
                     <TableCell sx={{ verticalAlign: "middle" }}>
                       <Box
                         component={Link}
@@ -110,12 +188,14 @@ const AdminRoomsPage: React.FC = () => {
                     </TableCell>
 
                     <TableCell>{r.description}</TableCell>
+
                     {/* Amenities formatting */}
                     <TableCell>{r.amenities.join(", ") ?? []}</TableCell>
+
                     <TableCell>{r.capacity}</TableCell>
                     <TableCell>€{r.price}</TableCell>
 
-                    {/* Images column*/}
+                    {/* Images column */}
                     <TableCell sx={{ verticalAlign: "middle" }}>
                       <Box
                         sx={{
@@ -124,15 +204,6 @@ const AdminRoomsPage: React.FC = () => {
                           overflowX: "auto",
                           maxWidth: 300,
                           p: 1,
-                          /**
-                           * Custom Scrollbar Styling (WebKit Browsers)
-                           * These pseudo-elements are part of the WebKit scrollbar API.
-                           * The idea is that we might have plenty of images, hence a scrollable bar
-                           * might come in handy.
-                           * ::-webkit-scrollbar      styles the scrollbar track
-                           * ::-webkit-scrollbar-thumb    styles the draggable thumb
-                           * https://developer.mozilla.org/en-US/docs/Web/CSS/::-webkit-scrollbar
-                           */
                           "&::-webkit-scrollbar": { height: 6 },
                           "&::-webkit-scrollbar-thumb": {
                             backgroundColor: "#ccc",
@@ -141,13 +212,7 @@ const AdminRoomsPage: React.FC = () => {
                         }}
                       >
                         {images.map((img: any) => {
-                          /**
-                           * The image path example below determines the shape of the
-                           * varianle 'fullPath'
-                           * Ex. rooms/3a622dc8-b2e3-40fa-99d9-050873802107/SeanchaiNook1.jpg
-                           * getPublicUrl() will convert this into:
-                           * https://<project>.supabase.co/storage/v1/object/public/assets/rooms/<roomId>/<filename>
-                           * */
+                          // This reflects the image path we have in supabase storage
                           const fullPath = `rooms/${r.id}/${img}`;
                           return (
                             <img
@@ -173,8 +238,17 @@ const AdminRoomsPage: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
+
+        <AdminRoomModal
+          open={openRoomModal}
+          onClose={() => setOpenRoomModal(false)}
+          onSave={handleSaveRoom}
+          roomForm={roomForm}
+          setRoomForm={setRoomForm}
+        />
       </Container>
     </>
   );
 };
+
 export default AdminRoomsPage;

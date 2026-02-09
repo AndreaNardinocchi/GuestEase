@@ -239,7 +239,7 @@ const RoomDetailsPage: React.FC = () => {
         <Box>
           {/* This hero image will be replaced by a carousel to display all 4 room images */}
           <RoomDetailsCarousel
-            images={room.images.map((img: any) =>
+            images={(room.images ?? []).map((img: any) =>
               getPublicUrl(`/rooms/${room.id}/${img}`),
             )}
           />

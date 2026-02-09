@@ -578,3 +578,36 @@ export const roles = [
   { value: "guest", label: "Guest" },
   { value: "admin", label: "Admin" },
 ];
+
+/**
+ * Props for the AdminRoomModal component.
+ * Defines all data and handlers required to display and manage the
+ * admin room form modal.
+ */
+export interface AdminRoomModalProps {
+  open: boolean;
+  onClose: () => void;
+  onSave: () => void;
+  roomForm: {
+    name: string;
+    description: string;
+    amenities: string;
+    capacity: string;
+    price: string;
+  };
+  /**
+   * State setter used to update individual user form fields.
+   * Passed down from the parent so the modal can modify form state.
+   * http://stackoverflow.com/questions/65823778/ddg#65824149
+   * https://www.xjavascript.com/blog/how-can-i-define-type-for-setstate-when-react-dispatch-react-setstateaction-string-not-accepted/
+   */
+  setRoomForm: React.Dispatch<
+    React.SetStateAction<{
+      name: string;
+      description: string;
+      amenities: string;
+      capacity: string;
+      price: string;
+    }>
+  >;
+}
