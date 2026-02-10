@@ -610,4 +610,10 @@ export interface AdminRoomModalProps {
       price: string;
     }>
   >;
+  // Files selected from the <input type="file" multiple /> element
+
+  selectedFiles: File[];
+  // Setter for updating the selectedFiles array
+  // https://stackoverflow.com/questions/65823778/how-can-i-define-type-for-setstate-when-react-dispatchreact-setstateactionstri
+  setSelectedFiles: React.Dispatch<React.SetStateAction<File[]>>;
 }

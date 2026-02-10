@@ -122,7 +122,12 @@ const BookingConfirmationPage: React.FC = () => {
       >
         <Box
           component="img"
-          src={getPublicUrl(`/rooms/${room.id}/${room.images[0]}`)}
+          src={
+            room.images[0].includes("rooms/")
+              ? getPublicUrl(room.images[0]) // New uploaded images path
+              : getPublicUrl(`/rooms/${room.id}/${room.images[0]}`) // old seeded images
+          }
+          // getPublicUrl(`/rooms/${room.id}/${room.images[0]}`)}
           alt={room.name}
           sx={{
             width: "100%",
@@ -262,7 +267,18 @@ const BookingConfirmationPage: React.FC = () => {
             <Box>
               <Box
                 component="img"
-                src={getPublicUrl(`/rooms/${room.id}/${room.images[1]}`)}
+                src={
+                  /**
+                   * The uploaded image path is like 'rooms/a77ddc44-0a5e-4585-b4e7-5b61cb2865d3/1770573915402-DruidsRest2.jpg',
+                   * as per 'const filePath = `rooms/${roomId}/${Date.now()}-${safeName}`;' in the adminRoomsPage.tsx file.
+                   * Hence, we are saying below, that if 'img' does include 'rooms/' in its path, that mean it has been uploaded by
+                   * the admin and will show the uploaded path. Otherwise, it will enable the old image path display, whose
+                   * image was originally manually uploaded straight into supabase
+                   */
+                  room.images[1].includes("rooms/")
+                    ? getPublicUrl(room.images[1]) // New uploaded images path
+                    : getPublicUrl(`/rooms/${room.id}/${room.images[1]}`) // old seeded images
+                }
                 alt={room.name}
                 sx={{
                   width: "100%",

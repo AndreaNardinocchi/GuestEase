@@ -31,6 +31,7 @@ const AdminRoomModal: React.FC<AdminRoomModalProps> = ({
   onSave,
   roomForm,
   setRoomForm,
+  setSelectedFiles,
 }) => {
   return (
     <Dialog
@@ -92,6 +93,19 @@ const AdminRoomModal: React.FC<AdminRoomModalProps> = ({
           fullWidth
           value={roomForm.price}
           onChange={(e) => setRoomForm({ ...roomForm, price: e.target.value })}
+        />
+
+        {/* Image Upload 
+        https://stackoverflow.com/questions/43692479/how-to-upload-an-image-in-react-js#68979570
+        */}
+        <input
+          type="file"
+          multiple
+          // This enables us to upload an array of images
+          // https://www.codefrontend.com/file-upload-reactjs/
+          // https://www.compilenrun.com/docs/framework/react/react-forms/react-file-uploads/
+          onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
+          style={{ marginTop: "1rem" }}
         />
       </DialogContent>
 

@@ -239,8 +239,18 @@ const RoomDetailsPage: React.FC = () => {
         <Box>
           {/* This hero image will be replaced by a carousel to display all 4 room images */}
           <RoomDetailsCarousel
-            images={(room.images ?? []).map((img: any) =>
-              getPublicUrl(`/rooms/${room.id}/${img}`),
+            images={(room.images ?? []).map(
+              (img: any) =>
+                /**
+                 * The uploaded image path is like 'rooms/a77ddc44-0a5e-4585-b4e7-5b61cb2865d3/1770573915402-DruidsRest2.jpg',
+                 * as per 'const filePath = `rooms/${roomId}/${Date.now()}-${safeName}`;' in the adminRoomsPage.tsx file.
+                 * Hence, we are saying below, that if 'img' does include 'rooms/' in its path, that mean it has been uploaded by
+                 * the admin and will show the uploaded path. Otherwise, it will enable the old image path display, whose
+                 * image was originally manually uploaded straight into supabase
+                 */
+                img.includes("rooms/")
+                  ? getPublicUrl(img) // New uploaded images path
+                  : getPublicUrl(`rooms/${room.id}/${img}`), // old seeded images
             )}
           />
         </Box>

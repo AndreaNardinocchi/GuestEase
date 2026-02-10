@@ -23,8 +23,13 @@ export function useAdminCreateRoom() {
   // This will insert the room in the supabase 'rooms' table
   return useMutation({
     mutationFn: async (payload: RoomPayload) => {
-      const { error } = await supabase.from("rooms").insert([payload]);
+      const { data, error } = await supabase
+        .from("rooms")
+        .insert([payload])
+        .select("id")
+        .single();
       if (error) throw error;
+      return data;
     },
 
     onSuccess: () => {

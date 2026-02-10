@@ -21,6 +21,8 @@ import AdminRoomModal from "../components/adminRoomModal/adminRoomModal";
 import AdminSubNav from "../components/adminSubNav/adminSubNav";
 import AdminDashboardHeader from "../components/adminDashboardHeader/adminDashboardHeader";
 import { useAdminCreateRoom } from "../hooks/useAdminCreateRoom";
+import { supabase } from "../supabase/supabaseClient";
+import { uploadRoomImages } from "../utils/uploadRoomImages";
 
 const AdminRoomsPage: React.FC = () => {
   /**
@@ -45,6 +47,11 @@ const AdminRoomsPage: React.FC = () => {
 
   // We create a state for the adminRoomModal
   const [openRoomModal, setOpenRoomModal] = useState(false);
+
+  // This state holds the list of image files selected by the admin before uploading.
+  // It stores an array of File objects coming from an <input type="file" multiple /> element.
+  // https://developer.mozilla.org/en-US/docs/Web/API/File
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   // This is the form state that the admin will fill out to create a room
   // when the modal open
@@ -76,33 +83,52 @@ const AdminRoomsPage: React.FC = () => {
    * then triggers the React Query mutation.
    * https://tanstack.com/query/latest/docs/framework/react/reference/useMutation
    * */
-  const handleSaveRoom = () => {
-    // Normalize and prepare data for Supabase
-    const roomPayload = {
-      name: roomForm.name.trim(),
-      // trim(): https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/trim
-      description: roomForm.description.trim(),
-      amenities: roomForm.amenities
-        .split(",")
-        // Amenities are an array of strings
-        .map((a) => a.trim())
-        // .filter(Boolean) removes empty or falsy values from the array after splitting.
-        // https://www.geeksforgeeks.org/javascript/how-to-remove-falsy-values-from-an-array-in-javascript/
-        .filter(Boolean),
-      capacity: Number(roomForm.capacity),
-      price: Number(roomForm.price),
-    };
-    // Trigger mutation
-    // https://tanstack.com/query/latest/docs/framework/react/guides/mutations
-    // https://www.wisp.blog/blog/the-complete-guide-to-react-querys-usemutation-everything-you-need-to-know
-    createRoom.mutate(roomPayload, {
-      onSuccess: () => {
-        // Refresh rooms list
-        // https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
-        refetch();
-        setOpenRoomModal(false);
-      },
-    });
+  const handleSaveRoom = async () => {
+    try {
+      // Normalize and prepare data for Supabase
+      const roomPayload = {
+        name: roomForm.name.trim(),
+        // trim(): https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/trim
+        description: roomForm.description.trim(),
+        amenities: roomForm.amenities
+          .split(",")
+          // Amenities are an array of strings
+          .map((a) => a.trim())
+          // .filter(Boolean) removes empty or falsy values from the array after splitting.
+          // https://www.geeksforgeeks.org/javascript/how-to-remove-falsy-values-from-an-array-in-javascript/
+          .filter(Boolean),
+        capacity: Number(roomForm.capacity),
+        price: Number(roomForm.price),
+      };
+
+      // Create the room first
+      const result = await createRoom.mutateAsync(roomPayload);
+      const roomId = result.id;
+
+      // Upload images
+      let uploadedImages: string[] = [];
+      if (selectedFiles.length > 0) {
+        uploadedImages = await uploadRoomImages(roomId, selectedFiles);
+      }
+
+      // Save image paths into the room
+      if (uploadedImages.length > 0) {
+        const { error: imgError } = await supabase
+          .from("rooms")
+          .update({ images: uploadedImages })
+          .eq("id", roomId);
+
+        if (imgError) throw imgError;
+      }
+
+      // Refresh rooms list
+      // https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
+      refetch();
+      setOpenRoomModal(false);
+      setSelectedFiles([]);
+    } catch (err) {
+      console.error("Error saving room:", err);
+    }
   };
 
   if (isLoading) {
@@ -213,11 +239,25 @@ const AdminRoomsPage: React.FC = () => {
                       >
                         {images.map((img: any) => {
                           // This reflects the image path we have in supabase storage
-                          const fullPath = `rooms/${r.id}/${img}`;
+                          // const fullPath = `rooms/${r.id}/${img}`;
+                          const fullPath = img;
+                          // console.log("IMG VALUE:", img);
+
                           return (
                             <img
                               key={fullPath}
-                              src={getPublicUrl(fullPath)}
+                              src={
+                                /**
+                                 * The uploaded image path is like 'rooms/a77ddc44-0a5e-4585-b4e7-5b61cb2865d3/1770573915402-DruidsRest2.jpg',
+                                 * as per 'const filePath = `rooms/${roomId}/${Date.now()}-${safeName}`;' in the adminRoomsPage.tsx file.
+                                 * Hence, we are saying below, that if 'img' does include 'rooms/' in its path, that mean it has been uploaded by
+                                 * the admin and will show the uploaded path. Otherwise, it will enable the old image path display, whose
+                                 * image was originally manually uploaded straight into supabase
+                                 */
+                                img.includes("rooms/")
+                                  ? getPublicUrl(fullPath) // New uploaded images path
+                                  : getPublicUrl(`rooms/${r.id}/${img}`) // old seeded images
+                              }
                               alt=""
                               style={{
                                 width: 60,
@@ -245,6 +285,8 @@ const AdminRoomsPage: React.FC = () => {
           onSave={handleSaveRoom}
           roomForm={roomForm}
           setRoomForm={setRoomForm}
+          selectedFiles={selectedFiles}
+          setSelectedFiles={setSelectedFiles}
         />
       </Container>
     </>
