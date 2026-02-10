@@ -5,6 +5,7 @@ import {
   CircularProgress,
   Container,
   Paper,
+  Snackbar,
   Table,
   TableBody,
   TableCell,
@@ -25,6 +26,8 @@ import { supabase } from "../supabase/supabaseClient";
 import { uploadRoomImages } from "../utils/uploadRoomImages";
 import { Room } from "../types/interfaces";
 import { useAdminUpdateRoom } from "../hooks/useAdminUpdateRoom";
+import { useAdminDeleteRoom } from "../hooks/useAdminDeleteRoom";
+import AlertDialogSlide from "../components/deleteRoomConfirm/deleteRoomConfirm";
 
 const AdminRoomsPage: React.FC = () => {
   /**
@@ -61,6 +64,18 @@ const AdminRoomsPage: React.FC = () => {
   // This is a state to itemize the existing images, and allow new image uploads
   // as well as their removal if needed
   const [existingImages, setExistingImages] = useState<string[]>([]);
+
+  // Controls visibility of the success snackbar
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+
+  // Stores the text that will appear inside the Snackbar
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+
+  // Controls whether the delete‑confirmation dialog is visible
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  // Holds the ID of the room the user intends to delete
+  const [roomToDelete, setRoomToDelete] = useState<string | null>(null);
 
   // This is the form state that the admin will fill out to create a room
   // when the modal open
@@ -147,7 +162,8 @@ const AdminRoomsPage: React.FC = () => {
 
         if (imgError) throw imgError;
       }
-
+      setSnackbarMessage("Room created successfully!");
+      setSnackbarOpen(true);
       // Refresh rooms list
       // https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
       refetch();
@@ -197,6 +213,8 @@ const AdminRoomsPage: React.FC = () => {
         price: Number(roomForm.price),
         images: finalImages,
       });
+      setSnackbarMessage("Room updated successfully!");
+      setSnackbarOpen(true);
       // Refresh rooms list
       // https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
       refetch();
@@ -205,6 +223,22 @@ const AdminRoomsPage: React.FC = () => {
     } catch (err) {
       console.error("Error saving room:", err);
     }
+  };
+
+  const deleteRoom = useAdminDeleteRoom();
+
+  const handleDeleteRoom = async (id: string) => {
+    if (!roomToDelete) return;
+
+    await deleteRoom.mutateAsync({ id });
+    setSnackbarMessage("Room deleted successfully!");
+    setSnackbarOpen(true);
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch#syntax
+    setDeleteDialogOpen(false);
+    setRoomToDelete(null);
+    // Refresh rooms list
+    // https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
+    refetch();
   };
 
   if (isLoading) {
@@ -234,7 +268,7 @@ const AdminRoomsPage: React.FC = () => {
     <>
       <AdminDashboardHeader />
       <AdminSubNav />
-      <Container sx={{ pb: 8 }}>
+      <Container maxWidth="xl" sx={{ pb: 8 }}>
         <Box my={4} display="flex" justifyContent="space-between">
           <Typography variant="h4">Rooms</Typography>
           <Button
@@ -360,7 +394,14 @@ const AdminRoomsPage: React.FC = () => {
                         Update
                       </Button>
 
-                      <Button variant="outlined" color="error">
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        onClick={() => {
+                          setRoomToDelete(r.id);
+                          setDeleteDialogOpen(true);
+                        }}
+                      >
                         Delete
                       </Button>
                     </TableCell>
@@ -382,6 +423,18 @@ const AdminRoomsPage: React.FC = () => {
           selectedFiles={selectedFiles}
           setSelectedFiles={setSelectedFiles}
           setExistingImages={setExistingImages}
+        />
+        {/* https://mui.com/material-ui/react-snackbar/ */}
+        <Snackbar
+          open={snackbarOpen}
+          autoHideDuration={3000}
+          onClose={() => setSnackbarOpen(false)}
+          message={snackbarMessage}
+        />
+        <AlertDialogSlide
+          open={deleteDialogOpen}
+          onClose={() => setDeleteDialogOpen(false)}
+          onConfirm={() => handleDeleteRoom(roomToDelete ?? "")}
         />
       </Container>
     </>
