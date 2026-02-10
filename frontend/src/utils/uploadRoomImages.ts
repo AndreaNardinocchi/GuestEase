@@ -7,6 +7,7 @@ import { supabase } from "../supabase/supabaseClient";
  * https://developer.mozilla.org/en-US/docs/Web/API/File/name
  */
 export const uploadRoomImages = async (roomId: string, files: File[]) => {
+  // This creates a List variable in which we will be pushing the uploaded images
   const uploadedPaths: string[] = [];
 
   // Sequential Reading Function

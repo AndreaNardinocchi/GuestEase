@@ -55,7 +55,12 @@ const AdminRoomsPage: React.FC = () => {
   // https://developer.mozilla.org/en-US/docs/Web/API/File
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
+  // This is the state we use to update rooms
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
+
+  // This is a state to itemize the existing images, and allow new image uploads
+  // as well as their removal if needed
+  const [existingImages, setExistingImages] = useState<string[]>([]);
 
   // This is the form state that the admin will fill out to create a room
   // when the modal open
@@ -81,6 +86,9 @@ const AdminRoomsPage: React.FC = () => {
   };
 
   const handleOpenUpdateRoom = (r: Room) => {
+    const imgs = r.images;
+    setExistingImages(imgs);
+
     setEditingRoom(r);
     setRoomForm({
       name: r.name,
@@ -160,7 +168,20 @@ const AdminRoomsPage: React.FC = () => {
   const handleUpdateRoom = async () => {
     if (!editingRoom) return;
     try {
-      //
+      // We create a variable string for new uploaded images
+      let newUploadedImages: string[] = [];
+      // If any image file is selected...
+      if (selectedFiles.length > 0) {
+        // ... then we upload via the uploadRoomImages, which will push them to the newUploadedImages list
+        newUploadedImages = await uploadRoomImages(
+          editingRoom.id,
+          selectedFiles,
+        );
+      }
+
+      // We finally create an overarching finalImages list encompassing the below lists through the spread operator
+      const finalImages = [...existingImages, ...newUploadedImages];
+      // Update room details with images included now
       await updateRoom.mutateAsync({
         id: editingRoom.id,
         name: roomForm.name,
@@ -174,6 +195,7 @@ const AdminRoomsPage: React.FC = () => {
           .filter(Boolean),
         capacity: Number(roomForm.capacity),
         price: Number(roomForm.price),
+        images: finalImages,
       });
       // Refresh rooms list
       // https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
@@ -355,9 +377,11 @@ const AdminRoomsPage: React.FC = () => {
           onSave={editingRoom ? handleUpdateRoom : handleSaveRoom}
           roomForm={roomForm}
           editingRoom={editingRoom}
+          existingImages={existingImages}
           setRoomForm={setRoomForm}
           selectedFiles={selectedFiles}
           setSelectedFiles={setSelectedFiles}
+          setExistingImages={setExistingImages}
         />
       </Container>
     </>

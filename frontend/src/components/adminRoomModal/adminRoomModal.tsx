@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -7,9 +7,12 @@ import {
   Button,
   TextField,
   Slide,
+  Box,
+  Typography,
 } from "@mui/material";
 import { TransitionProps } from "@mui/material/transitions";
 import { AdminRoomModalProps } from "../../types/interfaces";
+import { getPublicUrl } from "../../utils/supabaseAssetsStorage";
 
 /**
  * This is a nice transition effect we were eager to try out,
@@ -32,8 +35,14 @@ const AdminRoomModal: React.FC<AdminRoomModalProps> = ({
   roomForm,
   editingRoom,
   setRoomForm,
+  existingImages,
+  setExistingImages,
   setSelectedFiles,
 }) => {
+  const handleRemoveExistingImage = (img: string) => {
+    setExistingImages((prev: any[]) => prev.filter((i) => i !== img));
+  };
+
   return (
     <Dialog
       open={open}
@@ -95,6 +104,66 @@ const AdminRoomModal: React.FC<AdminRoomModalProps> = ({
           value={roomForm.price}
           onChange={(e) => setRoomForm({ ...roomForm, price: e.target.value })}
         />
+
+        {editingRoom && existingImages?.length > 0 && (
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle1">Existing Images</Typography>
+
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mt: 1 }}>
+              {existingImages.map((img) => (
+                <Box
+                  key={img}
+                  sx={{
+                    position: "relative",
+                    width: 100,
+                    height: 100,
+                    borderRadius: 2,
+                    overflow: "hidden",
+                    border: "1px solid #ccc",
+                  }}
+                >
+                  <img
+                    src={
+                      /**
+                       * The uploaded image path is like 'rooms/a77ddc44-0a5e-4585-b4e7-5b61cb2865d3/1770573915402-DruidsRest2.jpg',
+                       * as per 'const filePath = `rooms/${roomId}/${Date.now()}-${safeName}`;' in the adminRoomsPage.tsx file.
+                       * Hence, we are saying below, that if 'img' does include 'rooms/' in its path, that mean it has been uploaded by
+                       * the admin and will show the uploaded path. Otherwise, it will enable the old image path display, whose
+                       * image was originally manually uploaded straight into supabase
+                       */
+                      img.includes("rooms/")
+                        ? getPublicUrl(img) // New uploaded images path
+                        : getPublicUrl(`rooms/${editingRoom.id}/${img}`) // old seeded images
+                    }
+                    alt=""
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+
+                  <Button
+                    size="small"
+                    color="error"
+                    variant="contained"
+                    onClick={() => handleRemoveExistingImage(img)}
+                    sx={{
+                      position: "absolute",
+                      top: 2,
+                      right: 2,
+                      minWidth: 0,
+                      padding: "2px 6px",
+                      fontSize: "0.7rem",
+                    }}
+                  >
+                    X
+                  </Button>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        )}
 
         {/* Image Upload 
         https://stackoverflow.com/questions/43692479/how-to-upload-an-image-in-react-js#68979570

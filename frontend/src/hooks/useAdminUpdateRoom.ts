@@ -8,6 +8,7 @@ interface RoomPayload {
   amenities: string[];
   capacity: number;
   price: number;
+  images: string[];
 }
 
 /**
