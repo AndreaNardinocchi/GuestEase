@@ -588,6 +588,8 @@ export interface AdminRoomModalProps {
   open: boolean;
   onClose: () => void;
   onSave: () => void;
+  // If provided, the modal is in "edit" mode; otherwise it's creating a new room
+  editingRoom: Room | null;
   roomForm: {
     name: string;
     description: string;

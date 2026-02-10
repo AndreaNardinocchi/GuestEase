@@ -30,6 +30,7 @@ const AdminRoomModal: React.FC<AdminRoomModalProps> = ({
   onClose,
   onSave,
   roomForm,
+  editingRoom,
   setRoomForm,
   setSelectedFiles,
 }) => {
@@ -42,7 +43,7 @@ const AdminRoomModal: React.FC<AdminRoomModalProps> = ({
       slotProps={{ paper: { sx: { mx: 2 } } }}
       slots={{ transition: Transition }}
     >
-      <DialogTitle>Create Room</DialogTitle>
+      <DialogTitle>{editingRoom ? "Update Room" : "Create Room"}</DialogTitle>
 
       <DialogContent>
         <TextField
@@ -130,7 +131,7 @@ const AdminRoomModal: React.FC<AdminRoomModalProps> = ({
             px: 5,
           }}
         >
-          Create Room
+          {editingRoom ? "Update Room" : "Create Room"}
         </Button>
       </DialogActions>
     </Dialog>

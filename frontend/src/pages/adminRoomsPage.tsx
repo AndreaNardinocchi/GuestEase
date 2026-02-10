@@ -23,6 +23,8 @@ import AdminDashboardHeader from "../components/adminDashboardHeader/adminDashbo
 import { useAdminCreateRoom } from "../hooks/useAdminCreateRoom";
 import { supabase } from "../supabase/supabaseClient";
 import { uploadRoomImages } from "../utils/uploadRoomImages";
+import { Room } from "../types/interfaces";
+import { useAdminUpdateRoom } from "../hooks/useAdminUpdateRoom";
 
 const AdminRoomsPage: React.FC = () => {
   /**
@@ -53,6 +55,8 @@ const AdminRoomsPage: React.FC = () => {
   // https://developer.mozilla.org/en-US/docs/Web/API/File
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
+  const [editingRoom, setEditingRoom] = useState<Room | null>(null);
+
   // This is the form state that the admin will fill out to create a room
   // when the modal open
   const [roomForm, setRoomForm] = useState({
@@ -65,6 +69,7 @@ const AdminRoomsPage: React.FC = () => {
 
   // This will handle the modal create room form
   const handleOpenCreateRoom = () => {
+    setEditingRoom(null);
     setRoomForm({
       name: "",
       description: "",
@@ -72,6 +77,20 @@ const AdminRoomsPage: React.FC = () => {
       capacity: "",
       price: "",
     });
+    setOpenRoomModal(true);
+  };
+
+  const handleOpenUpdateRoom = (r: Room) => {
+    setEditingRoom(r);
+    setRoomForm({
+      name: r.name,
+      description: r.description ?? "",
+      amenities: (r.amenities ?? []).join(", "),
+      capacity: String(r.capacity ?? ""),
+      price: String(r.price ?? ""),
+    });
+
+    setSelectedFiles([]);
     setOpenRoomModal(true);
   };
 
@@ -121,6 +140,41 @@ const AdminRoomsPage: React.FC = () => {
         if (imgError) throw imgError;
       }
 
+      // Refresh rooms list
+      // https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
+      refetch();
+      setOpenRoomModal(false);
+      setSelectedFiles([]);
+    } catch (err) {
+      console.error("Error saving room:", err);
+    }
+  };
+
+  const updateRoom = useAdminUpdateRoom();
+
+  /**
+   * Update Room handler which updates the room payload,
+   * then triggers the React Query mutation.
+   * https://tanstack.com/query/latest/docs/framework/react/reference/useMutation
+   * */
+  const handleUpdateRoom = async () => {
+    if (!editingRoom) return;
+    try {
+      //
+      await updateRoom.mutateAsync({
+        id: editingRoom.id,
+        name: roomForm.name,
+        description: roomForm.description,
+        amenities: roomForm.amenities
+          .split(",")
+          // Amenities are an array of strings
+          .map((a) => a.trim())
+          // .filter(Boolean) removes empty or falsy values from the array after splitting.
+          // https://www.geeksforgeeks.org/javascript/how-to-remove-falsy-values-from-an-array-in-javascript/
+          .filter(Boolean),
+        capacity: Number(roomForm.capacity),
+        price: Number(roomForm.price),
+      });
       // Refresh rooms list
       // https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
       refetch();
@@ -187,6 +241,9 @@ const AdminRoomsPage: React.FC = () => {
                 <TableCell sx={{ fontWeight: "bold", textAlign: "center" }}>
                   Images
                 </TableCell>
+                <TableCell
+                  sx={{ fontWeight: "bold", textAlign: "center" }}
+                ></TableCell>
               </TableRow>
             </TableHead>
 
@@ -272,6 +329,19 @@ const AdminRoomsPage: React.FC = () => {
                         })}
                       </Box>
                     </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outlined"
+                        sx={{ mr: 1 }}
+                        onClick={() => handleOpenUpdateRoom(r)}
+                      >
+                        Update
+                      </Button>
+
+                      <Button variant="outlined" color="error">
+                        Delete
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -282,8 +352,9 @@ const AdminRoomsPage: React.FC = () => {
         <AdminRoomModal
           open={openRoomModal}
           onClose={() => setOpenRoomModal(false)}
-          onSave={handleSaveRoom}
+          onSave={editingRoom ? handleUpdateRoom : handleSaveRoom}
           roomForm={roomForm}
+          editingRoom={editingRoom}
           setRoomForm={setRoomForm}
           selectedFiles={selectedFiles}
           setSelectedFiles={setSelectedFiles}

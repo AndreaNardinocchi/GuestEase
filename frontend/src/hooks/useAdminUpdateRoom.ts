@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../supabase/supabaseClient";
 
 interface RoomPayload {
+  id: string;
   name: string;
   description: string;
   amenities: string[];
@@ -10,22 +11,24 @@ interface RoomPayload {
 }
 
 /**
- * React Query’s useMutation createss the room, then invalidates the
+ * React Query’s useMutation updates the room,  then invalidates the
  * cached "rooms" query so fresh data is refetched.
  * Local form state mirrors the room data, and useEffect keeps it synced
  * whenever the room query returns new values from Supabase.
  * https://tanstack.com/query/v4/docs/framework/react/guides/mutations
  * https://tanstack.com/query/v4/docs/framework/react/guides/query-invalidation
  */
-export function useAdminCreateRoom() {
+export function useAdminUpdateRoom() {
   const queryClient = useQueryClient();
 
   // This will insert the room in the supabase 'rooms' table
   return useMutation({
     mutationFn: async (payload: RoomPayload) => {
+      const { id, ...restOfRoomData } = payload;
       const { data, error } = await supabase
         .from("rooms")
-        .insert([payload])
+        .update(restOfRoomData)
+        .eq("id", id)
         .select("id")
         .single();
       if (error) throw error;
