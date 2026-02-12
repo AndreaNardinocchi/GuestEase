@@ -4,6 +4,8 @@
 import express from "express";
 import { supabase } from "../supabaseClientBackend.js";
 import { calculateStay } from "../utils/calculateTotalPriceUtil.js";
+import { getPublicUrl } from "../utils/getPublicUrl.js";
+import { bookingCreatedTemplate } from "../utils/emailTemplates.js";
 
 /**
  * express.Router is a way to organize related routes together. This will allow us to apply
@@ -14,7 +16,6 @@ import { calculateStay } from "../utils/calculateTotalPriceUtil.js";
 const router = express.Router();
 
 // USER Create Booking
-
 router.post("/user/create_booking", async (req, res) => {
   // Destructuring the body into parameters sent off from user-booking-api.ts (frontend)
   const { room_id, check_in, check_out, guests, userId } = req.body;
@@ -74,6 +75,35 @@ router.post("/user/create_booking", async (req, res) => {
         .status(500)
         .json({ error: insertError?.message || "Booking insertion failed" });
     }
+
+    // Extrapolating the booking id to be used in the confirmation email
+    const booking_id = insertedBookings[0].id;
+
+    // Fetching the GuestEase logo from the Supabase storage
+    const logoUrl = getPublicUrl("assets", "GuestEaseLogo.png");
+
+    // Generate the full HTML for the booking confirmation email using the template
+    // and pass the below values
+    const html = bookingCreatedTemplate({
+      profile,
+      room,
+      check_in,
+      check_out,
+      total_price,
+      logoUrl,
+      booking_id,
+    });
+
+    // Send confirmation email to the user
+    await fetch("http://localhost:3000/send_email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: profile.email,
+        subject: `Your Booking Confirmation for ${room.name} at GuestEase`,
+        body: html,
+      }),
+    });
 
     // Response
     return res.json({ success: true, booking: insertedBookings[0] });
