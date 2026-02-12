@@ -10,7 +10,7 @@ interface RoomPayload {
 }
 
 /**
- * React Query’s useMutation createss the room, then invalidates the
+ * React Query’s useMutation creates the room, then invalidates the
  * cached "rooms" query so fresh data is refetched.
  * Local form state mirrors the room data, and useEffect keeps it synced
  * whenever the room query returns new values from Supabase.

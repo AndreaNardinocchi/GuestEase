@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Button,
@@ -76,6 +76,11 @@ const AdminRoomsPage: React.FC = () => {
 
   // Holds the ID of the room the user intends to delete
   const [roomToDelete, setRoomToDelete] = useState<string | null>(null);
+
+  // Browser title
+  useEffect(() => {
+    document.title = `Roos Admin Dashboard | GuestEase`;
+  });
 
   // This is the form state that the admin will fill out to create a room
   // when the modal open

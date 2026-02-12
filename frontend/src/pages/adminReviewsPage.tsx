@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
+  Alert,
   Box,
+  CircularProgress,
   Container,
   Paper,
   Table,
@@ -15,39 +17,56 @@ import {
 import AdminSubNav from "../components/adminSubNav/adminSubNav";
 import AdminDashboardHeader from "../components/adminDashboardHeader/adminDashboardHeader";
 import { getRoomName } from "../utils/getRoomName";
+import { useAdminFetchingReviews } from "../hooks/useAdminFetchingReviews";
+import { useAdminFetchingRooms } from "../hooks/useAdminFetchingRooms";
+
+/**
+ * This page will show all the reviews so that the Admin can get acquainted
+ * with guests' feedback on their room/stay experience
+ */
 
 const AdminReviewsPage: React.FC = () => {
-  // ------------------------------------
-  // Dummy Data (Static)
-  // ------------------------------------
-  const rooms = [
-    { id: "1", name: "Ocean View Suite" },
-    { id: "2", name: "Garden Room" },
-  ];
+  /**
+   * React Query is a data-fetching and caching library that simplifies working with
+   * asynchronous data in React applications. Instead of manually managing loading states,
+   * errors, caching, refetching, and background updates, React Query handles all of this
+   * automatically. This results in cleaner components, fewer bugs, and a much smoother UX.
+   * React Query v5 is the latest, actively maintained version of TanStack Query.
+   * It introduces a simpler, more consistent API using a single options object:
+   *
+   *    useQuery({ queryKey: [...], queryFn: ... })
+   *
+   * https://tanstack.com/query/latest/docs/framework/react/reference/useQuery
+   * https://tanstack.com/query/latest/docs/framework/react/quick-start
+   * */
+  const { data: reviews, isLoading, error } = useAdminFetchingReviews();
+  const { data: rooms } = useAdminFetchingRooms();
 
-  const bookings = [
-    { id: "B1", room_id: "1" },
-    { id: "B2", room_id: "2" },
-  ];
+  // Browser title
+  useEffect(() => {
+    document.title = `Reviews Admin Dashboard | GuestEase`;
+  });
 
-  const reviews = [
-    {
-      id: "R1",
-      booking_id: "B1",
-      room_id: "1",
-      rating: 5,
-      comment: "Great stay!",
-      created_at: "2024-01-01T10:00:00Z",
-    },
-    {
-      id: "R2",
-      booking_id: "B2",
-      room_id: "2",
-      rating: 3,
-      comment: "It was okay.",
-      created_at: "2024-01-02T14:30:00Z",
-    },
-  ];
+  if (isLoading) {
+    return (
+      <Container sx={{ mt: 10, textAlign: "center" }}>
+        <Box display="flex" justifyContent="center" mt={10}>
+          <CircularProgress />
+        </Box>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container sx={{ mt: 10, textAlign: "center" }}>
+        <Typography color="error">Failed to load reviews</Typography>
+      </Container>
+    );
+  }
+
+  if (!reviews)
+    return <Alert severity="error">Booking or room not found.</Alert>;
 
   return (
     <>
@@ -100,6 +119,7 @@ const AdminReviewsPage: React.FC = () => {
                   <TableCell>{r.id}</TableCell>
                   <TableCell>{r.booking_id}</TableCell>
                   <TableCell>{getRoomName(r.room_id, rooms)}</TableCell>
+                  {/* <TableCell>{r.room_id}</TableCell> */}
                   <TableCell>{r.rating}</TableCell>
 
                   <TableCell

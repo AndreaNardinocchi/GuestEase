@@ -215,3 +215,20 @@ export const getBookingById = async (bookingId: string) => {
 
   return data;
 };
+
+/**
+ * Fetch all reviews from the Supabase "reviews" table.
+ * It uses the Supabase client to query the "reviews" table.
+ * `.select("*")` retrieves every column for each profile.
+ *
+ * https://supabase.com/docs/reference/javascript/select
+ */
+export const getReviews = async () => {
+  const { data, error } = await supabase.from("reviews").select("*");
+
+  // If Supabase returns an error, we throw a descriptive exception
+  if (error) {
+    throw new Error(`Unable to fetch reviews: ${error.message}`);
+  }
+  return data;
+};
