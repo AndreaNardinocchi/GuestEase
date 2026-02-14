@@ -19,3 +19,23 @@ VALUES (
   5,
   'Great!'
 );
+
+-- Remove the existing foreign key on reviews.user_id if it exists.
+-- Previously, user_id referenced auth.users(id), which prevented clean joins
+-- with the profiles table.
+ALTER TABLE reviews
+DROP CONSTRAINT IF EXISTS reviews_user_id_fkey;
+
+-- Re‑add the foreign key so that:
+-- reviews.user_id references profiles.id
+-- profiles.id is a 1:1 mirror of auth.users.id (kept in sync via triggers)
+-- However, profiles is the correct table to join against in Supabase (auth.users is not)
+-- This makes it possible to fetch reviewer names with:
+-- .select("*, profile:profiles(first_name, last_name)") in the useRoomReviews.ts hook
+-- ON DELETE CASCADE ensures that if a profile is deleted,
+-- all associated reviews are automatically removed.
+ALTER TABLE reviews
+ADD CONSTRAINT reviews_user_id_fkey
+FOREIGN KEY (user_id)
+REFERENCES profiles(id)
+ON DELETE CASCADE;

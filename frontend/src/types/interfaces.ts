@@ -396,6 +396,25 @@ export interface editSearchRoomsFormProps {
 }
 
 /**
+ * This creates the Review interface with the joined 'profile'
+ */
+export interface Review {
+  id: string;
+  booking_id: string;
+  user_id: string;
+  room_id: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+  visibility_status: string;
+  // Joined profile which will be used on the RoomDetailsCard component
+  profile?: {
+    first_name: string;
+    last_name: string;
+  };
+}
+
+/**
  * Props definition for RoomDetailsCard which describes all the data,
  * and callback functions that the RoomDetailsCard component needs to render.
  * The parent component (RoomDetailsPage) controls the booking state,
@@ -422,14 +441,15 @@ export interface RoomDetailsCardProps {
   setCheckOut: (date: string) => void;
   // Action callback
   onBook: () => void;
+  // Adding the below 2 fields to show on the roomDetailsPage
+  reviews?: Review[];
+  avgRating: number;
 }
 
 /**
  * This Booking interface is used in the AccountMyTripsPage
  * As the API function 'getUserBookings' enriches each booking by attaching
  * the full room object, we need an interface reflecting that.
- *
- *
  */
 export interface Booking {
   id: string;
@@ -622,3 +642,20 @@ export interface AdminRoomModalProps {
   // Setters to update the existing images
   setExistingImages: React.Dispatch<React.SetStateAction<string[]>>;
 }
+
+// export type ReviewWithUserMeta = {
+//   id: string;
+//   rating: number;
+//   comment: string;
+//   created_at: string;
+//   raw_user_meta_data?: {
+//     first_name?: string;
+//     last_name?: string;
+//   };
+//   ["auth.users"]?: {
+//     raw_user_meta_data?: {
+//       first_name?: string;
+//       last_name?: string;
+//     };
+//   };
+// };

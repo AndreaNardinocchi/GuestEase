@@ -26,6 +26,8 @@ const RoomDetailsCard: React.FC<RoomDetailsCardProps> = ({
   setCheckIn,
   setCheckOut,
   onBook,
+  reviews,
+  avgRating,
 }) => {
   /**
    * Generate today's date in YYYY-MM-DD format
@@ -74,6 +76,20 @@ const RoomDetailsCard: React.FC<RoomDetailsCardProps> = ({
       >
         <strong>{room.name}</strong>
       </Typography>
+
+      <Box sx={{ mb: 1 }}>
+        {reviews && reviews.length > 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            ★ {avgRating} ({reviews.length}{" "}
+            {reviews.length > 1 ? <span>reviews</span> : <span>review</span>})
+          </Typography>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            No reviews yet
+          </Typography>
+        )}
+      </Box>
+
       {/* Room Description */}
       <Typography variant="body1" gutterBottom sx={{ mb: 2 }}>
         {room.description}

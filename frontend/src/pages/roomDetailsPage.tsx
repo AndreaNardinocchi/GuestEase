@@ -15,6 +15,8 @@ import { getRoomById } from "../api/guestease-api";
 import PaymentDialog from "../components/stripeCheckOutModal/stripeCheckOutModal";
 import { AuthContext } from "../contexts/authContext";
 import { useUserProfile } from "../hooks/useFetchingUserProfile";
+import RoomReviews from "../components/roomReviews/roomReviews";
+import { useRoomReviews } from "../hooks/useRoomReviews";
 
 /**
  * This will be the page where all the room details and image gallery
@@ -89,9 +91,10 @@ const RoomDetailsPage: React.FC = () => {
     guests,
   );
 
-  console.log("paramCheckIn:", paramCheckIn);
-  console.log("paramCheckOut:", paramCheckOut);
-  console.log("Current URL:", location.pathname + location.search);
+  /**
+   * We fetch the reviews through the useRoomReviews hook
+   */
+  const { data: reviews = [] } = useRoomReviews(roomId as string);
 
   /**
    * Update page title when room data loads.
@@ -210,6 +213,18 @@ const RoomDetailsPage: React.FC = () => {
   };
 
   /**
+   * The avgRating is the average rating for the room caluculated through
+   * the reduce() function, whose function is 'iterate and “reduce” an array's values into one value.'
+   * Hence, we extrapolate each of the ratings and we 'sum' them (r.rating, while '0' is the initial number)
+   * https://www.freecodecamp.org/news/how-to-use-javascript-array-reduce-method/
+   * https://forum.freecodecamp.org/t/how-to-compute-the-average-rating-use-the-reduce-method-to-analyze-data-solved/198305
+   */
+  const avgRating =
+    reviews.length > 0
+      ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+      : 0;
+
+  /**
    * These early returns are safe because all hooks in this component
    * are declared above them. Previously, they appeared before several
    * useState/useEffect calls, which caused React to run a different
@@ -272,6 +287,8 @@ const RoomDetailsPage: React.FC = () => {
             setCheckIn={setCheckIn}
             setCheckOut={setCheckOut}
             onBook={handleBook}
+            reviews={reviews}
+            avgRating={avgRating}
           />
 
           {/* Stripe Payment Dialog opens after validation and before booking creation */}
@@ -281,6 +298,7 @@ const RoomDetailsPage: React.FC = () => {
             customerId={profile?.stripe_customer_id || ""}
             onSuccess={handlePaymentSuccessSoBookNow}
           />
+          <RoomReviews roomId={roomId as string} />
         </Container>
       </>
     </>

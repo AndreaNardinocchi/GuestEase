@@ -119,9 +119,7 @@ const AdminReviewsPage: React.FC = () => {
                   <TableCell>{r.id}</TableCell>
                   <TableCell>{r.booking_id}</TableCell>
                   <TableCell>{getRoomName(r.room_id, rooms)}</TableCell>
-                  {/* <TableCell>{r.room_id}</TableCell> */}
                   <TableCell>{r.rating}</TableCell>
-
                   <TableCell
                     sx={{
                       display: { xs: "none", sm: "table-cell" },
