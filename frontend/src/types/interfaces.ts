@@ -642,20 +642,3 @@ export interface AdminRoomModalProps {
   // Setters to update the existing images
   setExistingImages: React.Dispatch<React.SetStateAction<string[]>>;
 }
-
-// export type ReviewWithUserMeta = {
-//   id: string;
-//   rating: number;
-//   comment: string;
-//   created_at: string;
-//   raw_user_meta_data?: {
-//     first_name?: string;
-//     last_name?: string;
-//   };
-//   ["auth.users"]?: {
-//     raw_user_meta_data?: {
-//       first_name?: string;
-//       last_name?: string;
-//     };
-//   };
-// };

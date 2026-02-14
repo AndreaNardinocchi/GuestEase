@@ -4,6 +4,8 @@ import { Card, CardContent, CardActions, Typography, Box } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { RoomHorizontalCardProps } from "../../types/interfaces";
 import RoomCardHorizontalCarousel from "../roomHorizontalCardCarousel/roomHorizontalCardCarousel";
+import { calculateAverageRating } from "../../utils/calculateAverageRating";
+import { useRoomReviews } from "../../hooks/useRoomReviews";
 
 /**
  * This card is used to show available rooms data, where each card will show 1 room.
@@ -14,7 +16,6 @@ const RoomHorizontalCard: React.FC<RoomHorizontalCardProps> = ({
   id,
   name,
   description,
-  //   firstImage,
   price,
   images,
   amenities,
@@ -23,6 +24,14 @@ const RoomHorizontalCard: React.FC<RoomHorizontalCardProps> = ({
   guests,
   capacity,
 }) => {
+  /**
+   * We fetch the reviews through the useRoomReviews hook
+   */
+  const { data: reviews = [] } = useRoomReviews(id);
+
+  // Using the below function to get the average review rating
+  const avgRating = calculateAverageRating(reviews);
+
   return (
     <Card
       id={id}
@@ -84,6 +93,24 @@ const RoomHorizontalCard: React.FC<RoomHorizontalCardProps> = ({
           >
             {name}
           </Typography>
+
+          <Box sx={{ mb: 2 }}>
+            {reviews && reviews.length > 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                ★ {avgRating} ({reviews.length}
+                {reviews.length > 1 ? (
+                  <span>reviews</span>
+                ) : (
+                  <span>review</span>
+                )}
+                )
+              </Typography>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                No reviews yet
+              </Typography>
+            )}
+          </Box>
 
           {/* Room description*/}
           <Typography

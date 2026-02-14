@@ -22,6 +22,11 @@ const RoomReviews: React.FC<RoomReviewProps> = ({ roomId }) => {
    * */
   const { data: reviews, isLoading, error } = useRoomReviews(roomId);
 
+  // We create this useState to show more than 2 reviews on the roomDetailsPage
+  const [showAll, setShowAll] = useState(false);
+  // The visibleReviews will be 'sliced' to 2
+  const visibleReviews = showAll ? reviews : reviews?.slice(0, 2);
+
   if (isLoading) return <CircularProgress />;
 
   if (error) {
@@ -35,33 +40,80 @@ const RoomReviews: React.FC<RoomReviewProps> = ({ roomId }) => {
   if (reviews?.length === 0) return;
 
   return (
-    <Box mt={3} pb={4}>
-      <Typography variant="h6" component="h3" sx={{ fontWeight: "bold" }}>
-        Reviews:
+    <Box mt={4} pb={4} sx={{ color: "#472d30" }}>
+      <Typography
+        variant="h6"
+        component="h3"
+        sx={{ fontWeight: "bold", mb: 2 }}
+      >
+        Reviews
       </Typography>
-      {reviews?.map((review) => (
+
+      {reviews?.length === 0 && (
+        <Typography color="text.secondary" sx={{ fontStyle: "italic" }}>
+          No reviews yet — be the first to leave one!
+        </Typography>
+      )}
+
+      {visibleReviews?.map((review) => (
         <Box
           key={review.id}
-          mt={2}
-          p={2}
-          border="1px solid #ccc"
-          borderRadius={2}
+          sx={{
+            mt: 2,
+            p: 2.5,
+            borderRadius: 2,
+            border: "1px solid #e0e0e0",
+            backgroundColor: "#fafafa",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+          }}
         >
-          <Typography>
-            <strong>User:</strong> {review.guestName}
-          </Typography>
-          <Typography>
-            <strong>Rating:</strong> {review.rating} / 5
-          </Typography>
-          <Typography>
-            <strong>Comment:</strong>{" "}
+          {/* Header: Name + Rating */}
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 1,
+            }}
+          >
+            <Typography sx={{ fontWeight: 600 }}>{review.guestName}</Typography>
+
+            {/* Star rating */}
+            <Typography sx={{ color: "#e26d5c", fontWeight: 600 }}>
+              {"★".repeat(review.rating)}
+              {"☆".repeat(5 - review.rating)}
+            </Typography>
+          </Box>
+
+          {/* Comment */}
+          <Typography sx={{ mb: 1.5, lineHeight: 1.5 }}>
             <span style={{ fontStyle: "italic" }}>{review.comment}</span>
           </Typography>
+
+          {/* Date */}
           <Typography variant="caption" color="text.secondary">
             {new Date(review.created_at!).toLocaleDateString()}
           </Typography>
         </Box>
       ))}
+
+      {/* Show more / Show less
+      This will determine whether the below links will show */}
+      {(reviews?.length ?? 0) > 2 && (
+        <Box mt={2}>
+          <Typography
+            onClick={() => setShowAll(!showAll)}
+            sx={{
+              cursor: "pointer",
+              color: "#472d30",
+              fontWeight: 600,
+              "&:hover": { color: "#e26d5c" },
+            }}
+          >
+            {showAll ? "Show less ↑" : "Show more reviews ↓"}{" "}
+          </Typography>
+        </Box>
+      )}
     </Box>
   );
 };
