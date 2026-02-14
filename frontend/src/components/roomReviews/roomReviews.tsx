@@ -40,7 +40,7 @@ const RoomReviews: React.FC<RoomReviewProps> = ({ roomId }) => {
   if (reviews?.length === 0) return;
 
   return (
-    <Box mt={4} pb={4} sx={{ color: "#472d30" }}>
+    <Box px={3} mb={4} sx={{ color: "#472d30" }}>
       <Typography
         variant="h6"
         component="h3"
@@ -55,47 +55,53 @@ const RoomReviews: React.FC<RoomReviewProps> = ({ roomId }) => {
         </Typography>
       )}
 
-      {visibleReviews?.map((review) => (
-        <Box
-          key={review.id}
-          sx={{
-            mt: 2,
-            p: 2.5,
-            borderRadius: 2,
-            border: "1px solid #e0e0e0",
-            backgroundColor: "#fafafa",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-          }}
-        >
-          {/* Header: Name + Rating */}
+      {visibleReviews?.map((review) => {
+        console.log("PROFILE:", review.profile, "USER_ID:", review.user_id);
+
+        return (
           <Box
+            key={review.id}
             sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              mb: 1,
+              mt: 2,
+              p: 2.5,
+              borderRadius: 2,
+              border: "1px solid #e0e0e0",
+              backgroundColor: "#fafafa",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
             }}
           >
-            <Typography sx={{ fontWeight: 600 }}>{review.guestName}</Typography>
+            {/* Header: Name + Rating */}
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 1,
+              }}
+            >
+              <Typography sx={{ fontWeight: 600 }}>
+                {review.guestName}
+              </Typography>
 
-            {/* Star rating */}
-            <Typography sx={{ color: "#e26d5c", fontWeight: 600 }}>
-              {"★".repeat(review.rating)}
-              {"☆".repeat(5 - review.rating)}
+              {/* Star rating */}
+              <Typography sx={{ color: "#e26d5c", fontWeight: 600 }}>
+                {"★".repeat(review.rating)}
+                {"☆".repeat(5 - review.rating)}
+              </Typography>
+            </Box>
+
+            {/* Comment */}
+            <Typography sx={{ mb: 1.5, lineHeight: 1.5 }}>
+              <span style={{ fontStyle: "italic" }}>{review.comment}</span>
+            </Typography>
+
+            {/* Date */}
+            <Typography variant="caption" color="text.secondary">
+              {new Date(review.created_at!).toLocaleDateString()}
             </Typography>
           </Box>
-
-          {/* Comment */}
-          <Typography sx={{ mb: 1.5, lineHeight: 1.5 }}>
-            <span style={{ fontStyle: "italic" }}>{review.comment}</span>
-          </Typography>
-
-          {/* Date */}
-          <Typography variant="caption" color="text.secondary">
-            {new Date(review.created_at!).toLocaleDateString()}
-          </Typography>
-        </Box>
-      ))}
+        );
+      })}
 
       {/* Show more / Show less
       This will determine whether the below links will show */}

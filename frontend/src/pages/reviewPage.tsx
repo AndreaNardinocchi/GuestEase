@@ -21,6 +21,7 @@ import { Link as RouterLink } from "react-router-dom";
 import { AuthContext } from "../contexts/authContext";
 import { getPublicUrl } from "../utils/supabaseAssetsStorage";
 import { useSubmitReview } from "../hooks/useSubmitReview";
+import { useQueryClient } from "@tanstack/react-query";
 
 /**
  * ReviewPage for the guest review of the room.
@@ -71,7 +72,7 @@ const ReviewPage: React.FC = () => {
    * On success, it invalidates ["reviews"] so any review lists refresh.
    */
   const submitReviewMutation = useSubmitReview();
-
+  const queryClient = useQueryClient();
   /**
    * Handles the review submission using the React Query mutation hook
    * useSubmitReview()
@@ -88,12 +89,13 @@ const ReviewPage: React.FC = () => {
       {
         booking_id: booking.id,
         room_id: room.id,
-        user_id: user?.id,
+        user_id: user.id,
         rating,
         comment,
       },
       {
         onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["rooms", room.id] });
           setSnackbarMessage("Review submitted!");
           setSnackbarOpen(true);
           // It holds up the snackbar for 1.5 secs
@@ -118,6 +120,7 @@ const ReviewPage: React.FC = () => {
               "Something went wrong while submitting your review.",
             );
           }
+          setSnackbarOpen(true);
         },
       },
     );
@@ -212,7 +215,7 @@ const ReviewPage: React.FC = () => {
             We were delighted to have you stay in{" "}
             <MuiLink
               component={RouterLink}
-              to={`/booking-confirmation/${booking.id}`}
+              to={`/room/${room.id}`}
               sx={{
                 textDecoration: "none",
                 color: "#000000de",

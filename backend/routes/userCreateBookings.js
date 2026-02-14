@@ -44,9 +44,11 @@ router.post("/user/create_booking", async (req, res) => {
      * Calculating the total_price of the booking using calculateTotalPticeUtil.js
      */
     let total_price;
+    let total_nights;
     try {
       const result = calculateStay(check_in, check_out, room.price);
       total_price = result.total_price;
+      total_nights = result.nights;
     } catch (err) {
       return res.status(400).json({ error: err.message });
     }
@@ -92,6 +94,7 @@ router.post("/user/create_booking", async (req, res) => {
       total_price,
       logoUrl,
       booking_id,
+      total_nights,
     });
 
     // Send confirmation email to the user

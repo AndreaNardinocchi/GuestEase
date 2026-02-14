@@ -19,6 +19,7 @@ import AdminDashboardHeader from "../components/adminDashboardHeader/adminDashbo
 import { getRoomName } from "../utils/getRoomName";
 import { useAdminFetchingReviews } from "../hooks/useAdminFetchingReviews";
 import { useAdminFetchingRooms } from "../hooks/useAdminFetchingRooms";
+import { Link } from "react-router-dom";
 
 /**
  * This page will show all the reviews so that the Admin can get acquainted
@@ -118,7 +119,21 @@ const AdminReviewsPage: React.FC = () => {
                 <TableRow key={r.id}>
                   <TableCell>{r.id}</TableCell>
                   <TableCell>{r.booking_id}</TableCell>
-                  <TableCell>{getRoomName(r.room_id, rooms)}</TableCell>
+                  <TableCell>
+                    <Box
+                      component={Link}
+                      to={`/room/${r.room_id}`}
+                      sx={{
+                        color: "#472d30",
+                        textDecoration: "none",
+                        fontWeight: 500,
+                        display: "inline-block",
+                        "&:hover": { color: "#E26D5C" },
+                      }}
+                    >
+                      {getRoomName(r.room_id, rooms)}
+                    </Box>
+                  </TableCell>
                   <TableCell>{r.rating}</TableCell>
                   <TableCell
                     sx={{

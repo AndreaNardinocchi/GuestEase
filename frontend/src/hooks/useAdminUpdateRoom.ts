@@ -36,9 +36,12 @@ export function useAdminUpdateRoom() {
       return data;
     },
 
-    onSuccess: () => {
+    // As we now have 2 args, we need to add a dummy one
+    // for the second query invalidation (_)
+    onSuccess: (_, payload) => {
       // Refresh rooms list
       queryClient.invalidateQueries({ queryKey: ["rooms"] });
+      queryClient.invalidateQueries({ queryKey: ["rooms", payload.id] });
     },
   });
 }

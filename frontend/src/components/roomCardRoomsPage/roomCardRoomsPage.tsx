@@ -106,7 +106,7 @@ const RoomCardRoomsPage: React.FC<{ room: Room }> = ({ room }) => {
           <Box sx={{ mb: 2 }}>
             {reviews && reviews.length > 0 ? (
               <Typography variant="body2" color="text.secondary">
-                ★ {avgRating} ({reviews.length}
+                ★ {avgRating} ({reviews.length}{" "}
                 {reviews.length > 1 ? (
                   <span>reviews</span>
                 ) : (

@@ -6,6 +6,7 @@ export function bookingCreatedTemplate({
   total_price,
   logoUrl,
   booking_id,
+  total_nights,
 }) {
   const formattedId = `#${String(booking_id).slice(-12)}`;
 
@@ -51,6 +52,7 @@ export function bookingCreatedTemplate({
             ${room.description ? `<p><strong>Description:</strong> ${room.description}</p>` : ""}
             <p><strong>Check-in:</strong> ${check_in}</p>
             <p><strong>Check-out:</strong> ${check_out}</p>
+             <p><strong>Total Nights:</strong> ${total_nights}</p>
             <p><strong>Total Price:</strong> €${total_price.toFixed(2)}</p>
           </div>
 

@@ -239,3 +239,11 @@ USING (public.is_admin(auth.uid()))   -- Admin can update any row
 WITH CHECK (public.is_admin(auth.uid()));  -- WITH CHECK OPTION prevents us from updating or inserting rows that are not visible through the UI https://www.mysqltutorial.org/mysql-views/mysql-view-with-check-option/.
 
 
+-- This policy allows all users to read other users' names on
+-- the roomDetailsPage 'Reviews' section
+create policy "Allow read of profiles"
+on profiles
+for select
+to authenticated
+using (true);
+

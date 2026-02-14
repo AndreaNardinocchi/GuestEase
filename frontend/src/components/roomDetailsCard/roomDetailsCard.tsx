@@ -64,7 +64,7 @@ const RoomDetailsCard: React.FC<RoomDetailsCardProps> = ({
         p: 3,
         display: "flex",
         flexDirection: "column",
-        mb: 8,
+        mb: 2,
       }}
     >
       {/* Room Title */}
@@ -81,7 +81,7 @@ const RoomDetailsCard: React.FC<RoomDetailsCardProps> = ({
         {reviews && reviews.length > 0 ? (
           <Typography variant="body2" color="text.secondary">
             ★ {avgRating} ({reviews.length}{" "}
-            {reviews.length > 1 ? <span>reviews</span> : <span>review</span>})
+            {reviews.length > 1 ? <span> reviews</span> : <span> review</span>})
           </Typography>
         ) : (
           <Typography variant="body2" color="text.secondary">
