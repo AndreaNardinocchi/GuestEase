@@ -56,17 +56,24 @@ const AdminBookingsPage: React.FC = () => {
   // This state controls the payment dialog
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
 
-  // This stae will control and set the Stripe cutomer id
+  // This state will control and set the Stripe customer id
   const [customerId, setCustomerId] = useState<string | null>(null);
 
   // This state handles the paymentMethodId
   const [paymentMethodId, setPaymentMethodId] = useState<string | null>(null);
 
-  // We set a useState for the filters and leave the search field as empty
-  const [filters, setFilters] = useState({ search: "" });
-
-  // This useState() instead handles the filter button
-  const [open, setOpen] = useState(false);
+  // We set a useState for the filters and leave the fields as empty
+  const [filters, setFilters] = useState({
+    search: "",
+    room: "",
+    first_name: "",
+    last_name: "",
+    email: "",
+    check_in: "",
+    check_out: "",
+    created_at: "",
+    guests: "",
+  });
 
   /**
    * React Query is a data-fetching and caching library that simplifies working with
@@ -162,7 +169,8 @@ const AdminBookingsPage: React.FC = () => {
       setSnackbarOpen(true);
       setOpenBookingModal(false);
     } catch (err: any) {
-      alert(err.message || "Something went wrong");
+      setSnackbarMessage(err.message || "Something went wrong");
+      setSnackbarOpen(true);
     }
   };
 
@@ -220,8 +228,8 @@ const AdminBookingsPage: React.FC = () => {
     }
   };
 
-  // The filtered variable is the filtered bookings list through the hook useFilteredBookings
-  const filtered = useFilteredBookings(bookings ?? [], filters, rooms);
+  // We call the filteredBookings through the hook useFilteredBookings
+  const filteredBookings = useFilteredBookings(bookings, rooms, filters);
 
   if (bookingsLoading || roomsLoading) {
     return (
@@ -253,6 +261,7 @@ const AdminBookingsPage: React.FC = () => {
           <Button
             variant="contained"
             sx={{ backgroundColor: "#e26d5c" }}
+            // color="#e26d5c"
             onClick={handleOpenCreateBooking}
           >
             + Create Booking
@@ -260,12 +269,9 @@ const AdminBookingsPage: React.FC = () => {
         </Box>
 
         <BookingFilterUI
-          open={open}
-          setOpen={setOpen}
           filters={filters}
           setFilters={setFilters}
-          filtered={filtered}
-          rooms={rooms}
+          rooms={rooms ?? []}
         />
 
         {/**
@@ -281,13 +287,25 @@ const AdminBookingsPage: React.FC = () => {
             // overflowX: "auto" ensures horizontal scrolling on smaller screens.
             //  https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-x
             overflowX: "auto",
+            overflowY: "auto",
+            maxHeight: {
+              xs: "50vh",
+              sm: "150vh",
+            },
             borderRadius: 2,
             boxShadow: 3,
           }}
         >
           <Table sx={{ minWidth: 900 }}>
             <TableHead>
-              <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+              <TableRow
+                sx={{
+                  backgroundColor: "#f5f5f5",
+                  position: "sticky",
+                  top: 0,
+                  zIndex: 2,
+                }}
+              >
                 <TableCell sx={{ fontWeight: "bold" }}>Booking ID</TableCell>
                 <TableCell sx={{ fontWeight: "bold" }}>Room</TableCell>
                 <TableCell sx={{ fontWeight: "bold" }}>First Name</TableCell>
@@ -304,7 +322,7 @@ const AdminBookingsPage: React.FC = () => {
             </TableHead>
 
             <TableBody>
-              {filtered?.map((b) => (
+              {filteredBookings?.map((b) => (
                 <TableRow key={b.id}>
                   <TableCell>{b.id}</TableCell>
                   <TableCell>{getRoomName(b.room_id, rooms ?? [])}</TableCell>

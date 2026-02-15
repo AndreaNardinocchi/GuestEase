@@ -654,3 +654,24 @@ export interface AdminRoomModalProps {
   // Setters to update the existing images
   setExistingImages: React.Dispatch<React.SetStateAction<string[]>>;
 }
+
+/**
+ * Props for the filter card.
+ * The parent component owns the filter state; this card only updates it.
+ */
+export interface FilterBookingsCardProps {
+  filters: {
+    search: string;
+    room: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    guests: string;
+    check_in: string;
+    check_out: string;
+    created_at: string;
+    charged: string;
+  };
+  setFilters: (filters: any) => void;
+  rooms: { id: string; name: string }[];
+}

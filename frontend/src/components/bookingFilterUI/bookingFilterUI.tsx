@@ -1,67 +1,99 @@
-import React from "react";
-import { Box, Button, Paper, TextField } from "@mui/material";
-import { BookingWithUser } from "../../types/interfaces";
+import React, { useState } from "react";
+import Drawer from "@mui/material/Drawer";
+import Fab from "@mui/material/Fab";
+import FilterAltIcon from "@mui/icons-material/FilterAlt";
+import FilterBookingsCard from "../filters/bookingFilteredCard";
+import { Box } from "@mui/material";
 
-// Props accepted by the BookingFilterUI component.
-// This component does not perform filtering itself, it only controls
-// the UI for opening/closing the filter panel and updating the search input.
+/**
+ * Props for the BookingFilterUI component.
+ */
 interface BookingFilterUIProps {
-  open: boolean;
-  setOpen: (v: boolean) => void;
-  // Filter value is 'search' only for now
-  filters: { search: string };
-  /**
-   * State setter used to search based on the inputted value
-   * http://stackoverflow.com/questions/65823778/ddg#65824149
-   * https://www.xjavascript.com/blog/how-can-i-define-type-for-setstate-when-react-dispatch-react-setstateaction-string-not-accepted/
-   * */
-  setFilters: React.Dispatch<React.SetStateAction<{ search: string }>>;
-  // The list of bookings after filtering has been applied
-  // (computed in the parent using useFilteredBookings)
-  filtered: BookingWithUser[];
-  // List of rooms used to resolve room names
-  rooms: any[] | undefined;
+  filters: any;
+  setFilters: (filters: any) => void;
+  rooms: { id: string; name: string }[];
 }
 
+const styles = {
+  fab: {
+    position: "fixed",
+    top: {
+      xs: "80%",
+      sm: "90%",
+      md: "90%",
+      lg: "90%",
+    },
+    right: "1%",
+    bgcolor: "#e26d5c",
+    color: "white",
+    zIndex: 2000,
+  },
+};
+
+/**
+ * This component displays a floating filter button
+ *  - opening/closing the filter drawer
+ *  - passing filter state down to FilterBookingsCard
+ * The filtering is handled by the 'useFilteredBookings' hook.
+ * https://github.com/AndreaNardinocchi/MoviesApp/blob/main/src/components/movieFilterUI/index.tsx
+ */
 const BookingFilterUI: React.FC<BookingFilterUIProps> = ({
-  open,
-  setOpen,
   filters,
   setFilters,
-  filtered,
   rooms,
 }) => {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   return (
-    <Box sx={{ p: 2 }}>
-      <h2>Bookings Filter</h2>
-
-      {/* Filter button */}
-      <Button
-        variant="contained"
-        sx={{ backgroundColor: "#e26d5c" }}
-        // 'The logical NOT (!) (logical complement, negation) operator takes truth to falsity and vice versa.'
-        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Logical_NOT
-        onClick={() => setOpen(!open)}
+    <>
+      {/* Floating Filter Button */}
+      <Fab
+        variant="extended"
+        onClick={() => setDrawerOpen(true)}
+        sx={{
+          ...styles.fab,
+          "&:hover": {
+            bgcolor: "#EFF5E0",
+            color: "#000000de",
+          },
+        }}
       >
-        {open ? "Close Filters" : "Open Filters"}
-      </Button>
+        <FilterAltIcon />
+        {/* Filters */}
+      </Fab>
 
-      {/* Filter panel */}
-      {open && (
-        <Paper sx={{ p: 2, mt: 2 }}>
-          <TextField
-            label="Search"
-            fullWidth
-            value={filters.search}
-            // Update the filters state by keeping all existing fields (...f)
-            // and replacing ONLY the "search" field with the new input value
-            onChange={(e) =>
-              setFilters((f) => ({ ...f, search: e.target.value }))
-            }
-          />
-        </Paper>
-      )}
-    </Box>
+      {/* Drawer */}
+      <Drawer
+        anchor="left"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      >
+        <Drawer
+          anchor="left"
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+        >
+          <Box
+            sx={{
+              width: {
+                xs: "80vw",
+                sm: "350px",
+                md: "380px",
+                lg: "400px",
+              },
+
+              p: 2,
+            }}
+          >
+            <FilterBookingsCard
+              filters={filters}
+              setFilters={setFilters}
+              rooms={rooms}
+            />
+          </Box>
+        </Drawer>
+      </Drawer>
+    </>
   );
 };
 
