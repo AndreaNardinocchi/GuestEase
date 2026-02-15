@@ -1,32 +1,34 @@
 import React, { useEffect, useState } from "react";
 import {
-  Box,
-  Button,
-  CircularProgress,
   Container,
+  Box,
+  CircularProgress,
+  Typography,
+  Button,
   Paper,
-  Snackbar,
-  Table,
-  TableBody,
-  TableCell,
   TableContainer,
+  Table,
   TableHead,
   TableRow,
-  Typography,
+  TableCell,
+  TableBody,
+  Snackbar,
 } from "@mui/material";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getRoomName } from "../utils/getRoomName";
-import { getAllBookings, getRooms } from "../api/guestease-api";
-import { BookingWithUser } from "../types/interfaces";
-import AdminBookingModal from "../components/adminBookingModal/adminBookingModal";
+import { getAllBookings, getRooms, getUserByEmail } from "../api/guestease-api";
 import {
   adminCancelBookingApi,
-  adminCreateBookingApi,
   adminUpdateBookingApi,
+  adminCreateBookingApi,
 } from "../api/admin-bookings-api";
-import AlertDialogSlide from "../components/cancelBookingConfirm/cancelBookingConfirm";
+
+import { BookingWithUser } from "../types/interfaces";
 import AdminDashboardHeader from "../components/adminDashboardHeader/adminDashboardHeader";
 import AdminSubNav from "../components/adminSubNav/adminSubNav";
+import { getRoomName } from "../utils/getRoomName";
+import AdminBookingModal from "../components/adminBookingModal/adminBookingModal";
+import PaymentDialog from "../components/stripeCheckOutModal/stripeCheckOutModal";
+import AlertDialogSlide from "../components/cancelBookingConfirm/cancelBookingConfirm";
 
 const AdminBookingsPage: React.FC = () => {
   // Controls visibility of the booking modal
@@ -48,6 +50,14 @@ const AdminBookingsPage: React.FC = () => {
 
   // Holds the ID of the booking the user intends to delete
   const [bookingToDelete, setBookingToDelete] = useState<string | null>(null);
+
+  // This state controls the payment dialog
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+
+  // This stae will control and set the Stripe cutomer id
+  const [customerId, setCustomerId] = useState<string | null>(null);
+
+  const [paymentMethodId, setPaymentMethodId] = useState<string | null>(null);
 
   /**
    * React Query is a data-fetching and caching library that simplifies working with
@@ -85,38 +95,57 @@ const AdminBookingsPage: React.FC = () => {
     document.title = `Bookings Admin Dashboard | GuestEase`;
   });
 
-  // Local state for the booking form fields
-  const [bookingForm, setBookingForm] = useState({
-    room_id: "",
-    user_email: "",
-    check_in: "",
-    check_out: "",
-    guests: "",
-  });
-
-  // Opens the modal in 'create' mode and resets the form
+  // Opens the modal in 'create' mode
   const handleOpenCreateBooking = () => {
     setEditingBooking(null);
-    setBookingForm({
-      room_id: "",
-      user_email: "",
-      check_in: "",
-      check_out: "",
-      guests: "",
-    });
     setOpenBookingModal(true);
   };
 
-  // Handles updating an existing booking
-  const handleUpdateBooking = async () => {
-    if (!editingBooking) return;
+  /**
+   * This handles the payment dialog pop up passing in the booking object
+   */
+  const handleOpenPaymentDialog = async (booking: any) => {
     try {
+      // We retrieve the user by email as this is the field the admin will be
+      // filling in the admin modal form
+      const profile = await getUserByEmail(booking.user_email);
+
+      if (!profile?.stripe_customer_id) {
+        setSnackbarMessage("This user does not have a Stripe customer ID yet.");
+        setSnackbarOpen(true);
+        return;
+      }
+
+      // We then set the stripe customer id
+      setCustomerId(profile.stripe_customer_id);
+
+      /**
+       * Store the booking we are about to charge for.
+       * This works for both create and update flows.
+       */
+      setEditingBooking(booking);
+      setPaymentDialogOpen(true);
+    } catch (err) {
+      setSnackbarMessage("Could not load user profile.");
+      setSnackbarOpen(true);
+    }
+  };
+
+  // Handles updating an existing booking passing both the booking object and the paymnt method id
+  const handleUpdateBooking = async (
+    booking: any,
+    paymentMethodId?: string,
+  ) => {
+    if (!booking?.id) return;
+    try {
+      // We send the updated booking object to the backend
       await adminUpdateBookingApi({
-        booking_id: editingBooking.id,
-        room_id: bookingForm.room_id,
-        check_in: bookingForm.check_in,
-        check_out: bookingForm.check_out,
-        guests: Number(bookingForm.guests),
+        booking_id: booking.id,
+        room_id: booking.room_id,
+        check_in: booking.check_in,
+        check_out: booking.check_out,
+        guests: Number(booking.guests),
+        payment_method_id: paymentMethodId,
       });
       // Refresh bookings list
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
@@ -128,30 +157,27 @@ const AdminBookingsPage: React.FC = () => {
     }
   };
 
-  // Opens the modal in 'update' mode and resets the form
+  // Opens the modal in 'update' mode
   const handleOpenUpdateBooking = (b: BookingWithUser) => {
     setEditingBooking(b);
-    setBookingForm({
-      room_id: b.room_id,
-      user_email: b.user_email,
-      check_in: b.check_in,
-      check_out: b.check_out,
-      guests: String(b.guests),
-    });
     setOpenBookingModal(true);
   };
 
   // Handles creating a new booking through the admin API
-  const handleCreateBooking = async () => {
+  const handleCreateBooking = async (
+    booking: any,
+    paymentMethodId?: string,
+  ) => {
     try {
       const newBooking = {
-        room_id: bookingForm.room_id,
-        user_email: bookingForm.user_email,
-        check_in: bookingForm.check_in,
-        check_out: bookingForm.check_out,
-        guests: Number(bookingForm.guests),
+        room_id: booking.room_id,
+        user_email: booking.user_email,
+        check_in: booking.check_in,
+        check_out: booking.check_out,
+        guests: Number(booking.guests),
+        payment_method_id: paymentMethodId,
       };
-      // Sends booking to the backend
+      // Sends booking object to the backend
       await adminCreateBookingApi(newBooking);
       // This clears out the cache and alloes us to see the created booking without having to refresh the page
       // https://tanstack.com/query/v4/docs/framework/react/guides/query-invalidation
@@ -161,7 +187,8 @@ const AdminBookingsPage: React.FC = () => {
       setSnackbarOpen(true);
       setOpenBookingModal(false);
     } catch (err: any) {
-      alert(err.message || "Something went wrong");
+      setSnackbarMessage(err.message || "Something went wrong");
+      setSnackbarOpen(true);
     }
   };
 
@@ -175,7 +202,8 @@ const AdminBookingsPage: React.FC = () => {
       setSnackbarMessage("Booking deleted successfully!");
       setSnackbarOpen(true);
     } catch (err: any) {
-      alert(err.message || "Something went wrong");
+      setSnackbarMessage(err.message || "Something went wrong");
+      setSnackbarOpen(true);
     } finally {
       // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch#syntax
       setDeleteDialogOpen(false);
@@ -259,7 +287,7 @@ const AdminBookingsPage: React.FC = () => {
               {bookings?.map((b) => (
                 <TableRow key={b.id}>
                   <TableCell>{b.id}</TableCell>
-                  <TableCell>{getRoomName(b.room_id, rooms)}</TableCell>
+                  <TableCell>{getRoomName(b.room_id, rooms ?? [])}</TableCell>
                   <TableCell>{b.first_name}</TableCell>
                   <TableCell>{b.last_name}</TableCell>
                   <TableCell
@@ -307,12 +335,22 @@ const AdminBookingsPage: React.FC = () => {
         <AdminBookingModal
           open={openBookingModal}
           onClose={() => setOpenBookingModal(false)}
-          onSave={editingBooking ? handleUpdateBooking : handleCreateBooking}
+          onSave={(booking: any) => {
+            /**
+             * If editingBooking exists and has an id, then 'update' mode
+             * otherwise 'create' mode
+             */
+            if (editingBooking && editingBooking.id) {
+              handleUpdateBooking(booking, paymentMethodId ?? undefined);
+            } else {
+              handleCreateBooking(booking, paymentMethodId ?? undefined);
+            }
+          }}
           rooms={rooms ?? []}
           editingBooking={editingBooking}
-          bookingForm={bookingForm}
-          setBookingForm={setBookingForm}
+          onOpenPaymentDialog={handleOpenPaymentDialog}
         />
+
         {/* https://mui.com/material-ui/react-snackbar/ */}
         <Snackbar
           open={snackbarOpen}
@@ -320,11 +358,33 @@ const AdminBookingsPage: React.FC = () => {
           onClose={() => setSnackbarOpen(false)}
           message={snackbarMessage}
         />
+
         <AlertDialogSlide
           open={deleteDialogOpen}
           onClose={() => setDeleteDialogOpen(false)}
           onConfirm={() => handleDeleteBooking(bookingToDelete ?? "")}
         />
+
+        {customerId && (
+          <PaymentDialog
+            open={paymentDialogOpen}
+            onClose={() => setPaymentDialogOpen(false)}
+            customerId={customerId}
+            onSuccess={(paymentMethodId) => {
+              /**
+               * After Stripe returns a payment method,
+               * we check if the stored booking has an id.
+               * If yes, we update the booking, otherwise we will create it.
+               */
+              if (editingBooking && editingBooking.id) {
+                handleUpdateBooking(editingBooking, paymentMethodId);
+              } else {
+                handleCreateBooking(editingBooking, paymentMethodId);
+              }
+              setPaymentDialogOpen(false);
+            }}
+          />
+        )}
       </Container>
     </>
   );

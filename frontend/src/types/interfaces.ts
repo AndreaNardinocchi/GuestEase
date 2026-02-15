@@ -512,6 +512,7 @@ export interface BookingWithUser {
   total_price: number;
   created_at: string;
   charged: boolean;
+  nights: string;
 }
 
 /**
@@ -522,34 +523,45 @@ export interface BookingWithUser {
 export interface BookingModalProps {
   open: boolean;
   onClose: () => void;
-  onSave: () => void;
+  onSave: (booking: any) => void;
   // List of available rooms used to populate the room dropdown
   rooms: Room[];
   // If provided, the modal is in "edit" mode; otherwise it's creating a new booking
   editingBooking: BookingWithUser | null;
+
+  /**
+   * We no longer pass a bookingForm or setBookingForm from the parent.
+   * The modal now manages its own internal booking state (localBooking)
+   * and only returns the final booking object via onSave().
+   * This removes duplicated state, simplifies the parent component,
+   * and prevents React state mismatches between parent and modal.
+   */
+
   // Current values of the booking form fields
-  bookingForm: {
-    room_id: string;
-    user_email: string;
-    check_in: string;
-    check_out: string;
-    guests: string;
-  };
+  // bookingForm: {
+  //   room_id: string;
+  //   user_email: string;
+  //   check_in: string;
+  //   check_out: string;
+  //   guests: string;
+  // };
   /**
    * State setter used to update individual booking form fields.
    * Passed down from the parent so the modal can modify form state.
    * http://stackoverflow.com/questions/65823778/ddg#65824149
    * https://www.xjavascript.com/blog/how-can-i-define-type-for-setstate-when-react-dispatch-react-setstateaction-string-not-accepted/
    */
-  setBookingForm: React.Dispatch<
-    React.SetStateAction<{
-      room_id: string;
-      user_email: string;
-      check_in: string;
-      check_out: string;
-      guests: string;
-    }>
-  >;
+  // setBookingForm: React.Dispatch<
+  //   React.SetStateAction<{
+  //     room_id: string;
+  //     user_email: string;
+  //     check_in: string;
+  //     check_out: string;
+  //     guests: string;
+  //   }>
+  // >;
+  // Triggered when the admin chooses to add or update a payment method; opens the payment dialog UI
+  onOpenPaymentDialog: (booking: any) => void;
 }
 
 /**

@@ -33,6 +33,7 @@ export const adminUpdateBookingApi = async (updateData: {
   check_in: string;
   check_out: string;
   guests: number;
+  payment_method_id?: string;
 }) => {
   const res = await fetch("http://localhost:3000/admin/update-booking", {
     method: "POST",

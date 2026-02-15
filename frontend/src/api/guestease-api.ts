@@ -34,6 +34,20 @@ export const getUserProfile = async (userId: string) => {
 };
 
 /**
+ * Fetch the user by email
+ */
+export const getUserByEmail = async (email: string) => {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("email", email)
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data;
+};
+
+/**
  * This API function will allow us to get user data updated
  */
 export async function updateUserProfile(
