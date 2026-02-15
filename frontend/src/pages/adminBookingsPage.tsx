@@ -30,6 +30,7 @@ import AdminBookingModal from "../components/adminBookingModal/adminBookingModal
 import PaymentDialog from "../components/stripeCheckOutModal/stripeCheckOutModal";
 import AlertDialogSlide from "../components/cancelBookingConfirm/cancelBookingConfirm";
 import BookingFilterUI from "../components/bookingFilterUI/bookingFilterUI";
+import { useFilteredBookings } from "../hooks/useFilteredBookings";
 
 const AdminBookingsPage: React.FC = () => {
   // Controls visibility of the booking modal
@@ -58,7 +59,14 @@ const AdminBookingsPage: React.FC = () => {
   // This stae will control and set the Stripe cutomer id
   const [customerId, setCustomerId] = useState<string | null>(null);
 
+  // This state handles the paymentMethodId
   const [paymentMethodId, setPaymentMethodId] = useState<string | null>(null);
+
+  // We set a useState for the filters and leave the search field as empty
+  const [filters, setFilters] = useState({ search: "" });
+
+  // This useState() instead handles the filter button
+  const [open, setOpen] = useState(false);
 
   /**
    * React Query is a data-fetching and caching library that simplifies working with
@@ -212,6 +220,9 @@ const AdminBookingsPage: React.FC = () => {
     }
   };
 
+  // The filtered variable is the filtered bookings list through the hook useFilteredBookings
+  const filtered = useFilteredBookings(bookings ?? [], filters, rooms);
+
   if (bookingsLoading || roomsLoading) {
     return (
       <Container>
@@ -242,14 +253,20 @@ const AdminBookingsPage: React.FC = () => {
           <Button
             variant="contained"
             sx={{ backgroundColor: "#e26d5c" }}
-            // color="#e26d5c"
             onClick={handleOpenCreateBooking}
           >
             + Create Booking
           </Button>
         </Box>
 
-        <BookingFilterUI />
+        <BookingFilterUI
+          open={open}
+          setOpen={setOpen}
+          filters={filters}
+          setFilters={setFilters}
+          filtered={filtered}
+          rooms={rooms}
+        />
 
         {/**
          * Material UI TableContainer component used to wrap the bookings table.
@@ -287,7 +304,7 @@ const AdminBookingsPage: React.FC = () => {
             </TableHead>
 
             <TableBody>
-              {bookings?.map((b) => (
+              {filtered?.map((b) => (
                 <TableRow key={b.id}>
                   <TableCell>{b.id}</TableCell>
                   <TableCell>{getRoomName(b.room_id, rooms ?? [])}</TableCell>
