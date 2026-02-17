@@ -1,6 +1,8 @@
 import express from "express";
 import { supabase } from "../supabaseClientBackend.js";
 import { createStripeCustomer } from "../utils/createStripeCustomerUtil.js";
+import { getPublicUrl } from "../utils/getPublicUrl.js";
+import { userCreatedTemplate } from "../utils/emailTemplates.js";
 
 /**
  * express.Router is a way to organize related routes together. This will allow us to apply
@@ -93,6 +95,41 @@ router.post("/admin/create-user", async (req, res) => {
     if (profileError) {
       return res.status(500).json({ error: profileError.message });
     }
+
+    // This Supabase function will generate a link to generate a tokenized link
+    // baked into the 'Welcometo GuestEase' email that will be sent off.
+    // Basically, it is a CTA link which will land the user on the
+    // '/update-password/' page
+    const { data: reset } = await supabase.auth.admin.generateLink({
+      type: "recovery",
+      email,
+      options: { redirectTo: "http://localhost:5173/update-password" },
+    });
+
+    // Fetching the tokenizedLink
+    const tokenizedLink = reset.properties.action_link;
+
+    // Fetching the GuestEase logo from the Supabase storage
+    const logoUrl = getPublicUrl("assets", "GuestEaseLogo.png");
+
+    // Generate the full HTML for the booking confirmation email using the template
+    // and pass the below values
+    const html = userCreatedTemplate({
+      authUser,
+      logoUrl,
+      tokenizedLink,
+    });
+
+    // Send confirmation email to the user that their account has been created
+    await fetch("http://localhost:3000/send_email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: authUser.email,
+        subject: `Welcome to GuestEase ${authUser.user_metadata.first_name} 🎉`,
+        body: html,
+      }),
+    });
 
     // Success returns the user and temporary password
     return res.status(201).json({

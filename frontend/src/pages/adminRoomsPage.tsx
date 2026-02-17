@@ -79,7 +79,7 @@ const AdminRoomsPage: React.FC = () => {
 
   // Browser title
   useEffect(() => {
-    document.title = `Roos Admin Dashboard | GuestEase`;
+    document.title = `Rooms Admin Dashboard | GuestEase`;
   });
 
   // This is the form state that the admin will fill out to create a room

@@ -1,5 +1,8 @@
 // import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../supabase/supabaseClient";
+import { reviewEmailTemplate } from "../utils/reviewEmail";
+import { getPublicUrl } from "../utils/supabaseAssetsStorage";
+import { getBookingById, getRoomById, getUserProfile } from "./guestease-api";
 
 /**
  * This is a function to submit a review.
@@ -14,12 +17,46 @@ export const submitReview = async (payload: {
   rating: number;
   comment: string;
 }) => {
+  const { booking_id, rating, comment } = payload;
   const { error } = await supabase.from("reviews").insert({
     ...payload,
     created_at: new Date(),
   });
-
   if (error) throw new Error(error.message);
+
+  // Retrieving all objects needed for the email parameters
+  const room = await getRoomById(payload.room_id);
+  const booking = await getBookingById(payload.booking_id);
+  const user = await getUserProfile(payload.user_id);
+
+  // Fetching the GuestEase logo from the Supabase storage
+  const logoUrl = getPublicUrl("GuestEaseLogo.png");
+  const adminEmail = import.meta.env.VITE_RESEND_ADMIN_EMAIL;
+
+  // Generate the full HTML for the booking confirmation email using the template
+  // and pass the below values
+  const html = reviewEmailTemplate({
+    booking_id,
+    check_in: booking.check_in,
+    check_out: booking.check_out,
+    rating,
+    room_name: room?.name ?? "Unknown Room",
+    user_name: user?.first_name ?? "Guest",
+    comment,
+    logoUrl,
+    adminDashboardUrl: "http://localhost:5173/admin/reviews",
+  });
+
+  const res = await fetch("http://localhost:3000/send_email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: adminEmail,
+      subject: "New Review Submitted",
+      body: html,
+    }),
+  });
+
   return true;
 };
 

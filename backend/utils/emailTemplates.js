@@ -240,3 +240,64 @@ export function bookingCancelledTemplate({
   </div>
   `;
 }
+
+export function userCreatedTemplate({ authUser, logoUrl, tokenizedLink }) {
+  const displayName = authUser.user_metadata.first_name ?? user.email;
+
+  return `
+  <div style="background:#f4f4f4; padding:20px; font-family:Arial, sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
+      style="max-width:600px; margin:auto; background:#ffffff; border-radius:10px; border:1px solid #472d3020; overflow:hidden;">
+
+      <!-- Logo -->
+      <tr>
+        <td style="padding:25px; text-align:center; background:#472d30;">
+          <img src="${logoUrl}" alt="GuestEase Logo" width="150" />
+        </td>
+      </tr>
+
+      <!-- Header -->
+      <tr>
+        <td style="padding:20px; text-align:center; background:#E26D5C;">
+          <h2 style="margin:0; font-weight:600; font-size:22px; color:#fff;">
+            Welcome to GuestEase 🎉
+          </h2>
+          <p style="margin:8px 0 0; font-size:14px; color:#fff; opacity:0.9;">
+            Your account has been created successfully
+          </p>
+        </td>
+      </tr>
+
+      <!-- Body -->
+      <tr>
+        <td style="padding:26px; color:#472d30; font-size:15px; line-height:1.6;">
+          <p>Hello <strong>${displayName}</strong>,</p>
+
+          <p>We're excited to welcome you to <strong>GuestEase</strong> 🧡  
+          Your profile has been created by an administrator, and you're all set to start managing your bookings with ease.</p>
+
+          <p>Before you get started, please take a moment to set your password using the link below:</p>
+
+          <div style="text-align:center; margin:28px 0;">
+            <a href="${tokenizedLink}"
+              style="background:#E26D5C; color:#fff; padding:12px 24px;
+              text-decoration:none; border-radius:6px; font-size:16px; font-weight:600;">
+              Set Your Password
+            </a>
+          </div>
+
+          <p>If you ever need help or have questions, our team is always here to support you 🤝</p>
+        </td>
+      </tr>
+
+      <!-- Footer -->
+      <tr>
+        <td style="text-align:center; padding:18px; font-size:12px; color:#472d30;">
+          © ${new Date().getFullYear()} GuestEase. All rights reserved.
+        </td>
+      </tr>
+
+    </table>
+  </div>
+  `;
+}

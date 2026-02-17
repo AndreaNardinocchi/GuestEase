@@ -3,7 +3,7 @@ import express from "express";
 const router = express.Router();
 
 router.post("/send_email", async (req, res) => {
-  console.log("📩 Hit /send_email route"); // <-- add this
+  // console.log("Hit /send_email route");
   const { email, subject, body, from } = req.body;
 
   if (!email || !subject || !body) {

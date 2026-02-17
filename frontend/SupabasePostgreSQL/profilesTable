@@ -162,7 +162,7 @@ add column stripe_customer_id text;
 -- their role will be changed to 'admin'
 update public.profiles
 set role = 'admin'
-where email = 'andrea.nardinocchi76@gmail.com';
+where email = 'setuproject.guesteasebb@gmail.com';
 
 --------------------------------------------------------------------------------
 --------             User     POLICIES              ----------------------------
