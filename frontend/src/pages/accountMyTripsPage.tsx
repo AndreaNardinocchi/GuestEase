@@ -12,7 +12,7 @@ import type { Booking } from "../types/interfaces";
 import { AuthContext } from "../contexts/authContext";
 import { useQuery } from "@tanstack/react-query";
 import BookedRoomCard from "../components/bookedRoomCard/bookedRoomCard";
-import AccountSubNav from "../accountSubNav/accountSubNav";
+import AccountSubNav from "../components/accountSubNav/accountSubNav";
 import { useUserUpdateBooking } from "../hooks/useUserUpdateBooking";
 import EditBookingDialog from "../components/editBookingDialog/editBookingDialog";
 import AlertDialogSlide from "../components/cancelBookingConfirm/cancelBookingConfirm";
@@ -380,7 +380,7 @@ const AccountMyTripsPage: React.FC = () => {
         <PaymentDialog
           open={stripeCheckOutModalOpen}
           onClose={() => setStripeCheckOutModalOpen(false)}
-          customerId={profile?.stripe_customer_id || ""}
+          // customerId={profile?.stripe_customer_id || ""}
           onSuccess={handlePaymentSuccessSoUpdateNow}
         />
       </Container>

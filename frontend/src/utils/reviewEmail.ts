@@ -4,7 +4,6 @@ export interface ReviewEmailTemplateProps {
   check_out: string;
   rating: number;
   comment: string;
-
   // Additional required fields for the email
   room_name: string;
   user_name: string;

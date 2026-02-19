@@ -257,7 +257,8 @@ const BookingConfirmationPage: React.FC = () => {
                     }}
                   >
                     Please note: reservations cannot be modified or cancelled
-                    within 24 hours of check‑in.
+                    within 24 hours of check‑in, when your credit card will have
+                    been charged.
                   </Typography>
                 </CardContent>
               </Card>

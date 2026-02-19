@@ -70,7 +70,7 @@ router.post("/user/update-booking", async (req, res) => {
     }
 
     // Extrapolating the profile, and number of guests from the updatedBooking
-    const { guests, profile } = updatedBooking;
+    const { guests, profiles: profile } = updatedBooking;
 
     // Fetching the GuestEase logo from Supabase storage
     const logoUrl = getPublicUrl("assets", "GuestEaseLogo.png");
@@ -101,6 +101,7 @@ router.post("/user/update-booking", async (req, res) => {
 
     return res.json({ success: true, booking: updatedBooking, newTotal });
   } catch (err) {
+    console.error("UPDATE BOOKING ERROR:", err);
     return res.status(500).json({ error: err.message });
   }
 });

@@ -30,8 +30,8 @@ const SearchRoomsForm: React.FC = () => {
 
   // Form state for check-in, check-out, and guest count
   const [formData, setFormData] = useState<SearchFormData>({
-    checkIn: "",
-    checkOut: "",
+    checkIn: today,
+    checkOut: tomorrowStr,
     guests: 1,
   });
 

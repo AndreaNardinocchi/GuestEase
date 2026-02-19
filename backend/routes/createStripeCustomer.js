@@ -17,24 +17,57 @@ const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 router.post("/create-stripe-customer", async (req, res) => {
-  const { email, userId } = req.body;
-
   try {
-    // Create Stripe customer
-    // https://docs.stripe.com/api/customers/create
-    const customer = await stripe.customers.create({ email });
+    const { email, userId } = req.body;
 
-    // Save the Stripe customer id to Supabase which is needed to link
-    // the user to Stripe
+    if (!email || !userId) {
+      return res.status(400).json({ error: "Missing email or userId" });
+    }
+
+    /**
+     * We check if the user already has a Stripe customer ID.
+     * If yes, we are not creating a new customer.
+     */
+    const { data: profile, error: profileErr } = await supabase
+      .from("profiles")
+      .select("stripe_customer_id")
+      .eq("id", userId)
+      .single();
+
+    if (profileErr) {
+      return res.status(400).json({ error: "Failed to fetch profile" });
+    }
+
+    if (profile?.stripe_customer_id) {
+      // User already has a Stripe customer, so we return it
+      return res.json({
+        customerId: profile.stripe_customer_id,
+        existing: true,
+      });
+    }
+
+    /**
+     * If we reach here, the user does not have a Stripe customer yet.
+     * Create Stripe customer
+     *  https://docs.stripe.com/api/customers/create
+     */
+    const customer = await stripe.customers.create({
+      email,
+      metadata: { userId },
+    });
+
+    // We then save the new customer ID in Supabase
     await supabase
       .from("profiles")
       .update({ stripe_customer_id: customer.id })
       .eq("id", userId);
 
-    res.json({ customerId: customer.id });
-  } catch (err) {
-    console.error(err);
-    res.status(400).json({ error: "Failed to create Stripe customer" });
+    res.json({
+      customerId: customer.id,
+      existing: false,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

@@ -1,11 +1,13 @@
-/** 
+/**
  * 'Edge Functions are server-side TypeScript functions, distributed globally at the edge—close to your
  * users. They can be used for listening to webhooks or integrating your Supabase project with third-parties
  * like Stripe. Edge Functions are developed using Deno, which offers a few benefits to you as a developer'
+ *
  * Imports Supabase Edge Runtime types for Deno.
  * https://supabase.com/docs/guides/functions
  */
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { paymentSuccessTemplate } from "./paymentSuccessTemplate.ts";
 
 /**
  * Supabase JavaScript client for database operations.
@@ -38,7 +40,7 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
 });
 
 /**
- * Main server handler — runs automatically on schedule or invocation.
+ * Main server handler which runs automatically on schedule or invocation.
  * https://deno.com/deploy/docs/runtime-fs#denoserve
  */
 Deno.serve(async () => {
@@ -52,16 +54,16 @@ Deno.serve(async () => {
      * A fix that was needed:
      * check_in is a DATE column, not a TIMESTAMP.
      * We must compare date to date, otherwise bookings on the same day
-     * (e.g. check_in = "2026-02-14") won't match when cron https://console.cron-job.org/jobs/7220668/history 
-     runs later in the day.
-     https://stackoverflow.com/questions/47066555/remove-time-after-converting-date-toisostring#55231024
+     * (e.g. check_in = "2026-02-14") won't match when cron https://console.cron-job.org/jobs/7220668/history
+     * runs later in the day.
+     * https://stackoverflow.com/questions/47066555/remove-time-after-converting-date-toisostring#55231024
      */
     const today = now.toISOString().split("T")[0];
     const tomorrow = in24h.toISOString().split("T")[0];
 
     /**
      * 1. Fetch bookings with check-in within the next 24 hours
-     *    AND not yet charged.
+     *    ans not yet charged.
      * https://supabase.com/docs/reference/javascript/select
      * Compare DATE strings instead of timestamps
      * Limit to 5 booking to avoid Supabase EarlyDrop timeouts
@@ -90,18 +92,20 @@ Deno.serve(async () => {
 
     const results = [];
 
+    // For any booking we run the below
     for (const booking of bookings) {
       try {
         /**
-         * 2. Retrieve the user's Stripe customer ID from profiles table.
+         * 2. Retrieve the user's Stripe customer ID + email + full name.
          */
         const { data: user, error: userError } = await supabase
           .from("profiles")
-          .select("stripe_customer_id")
+          .select("stripe_customer_id, first_name, last_name, email")
           .eq("id", booking.user_id)
           .single();
 
         if (userError || !user?.stripe_customer_id) {
+          // We push the below error to the list of results
           results.push({
             booking_id: booking.id,
             status: "failed",
@@ -111,17 +115,41 @@ Deno.serve(async () => {
         }
 
         /**
+         * Otherwise, we retrieve the 'payment_method_id' from the Supabase 'user_payment_methods' table
+         * of the booking user
+         */
+        const { data: pm } = await supabase
+          .from("user_payment_methods")
+          .select("payment_method_id")
+          .eq("user_id", booking.user_id)
+          .eq("is_default", true)
+          .single();
+
+        if (!pm) {
+          throw new Error("User has no default payment method");
+        }
+
+        /**
          * 3. Create a Stripe Payment Intent to charge the user.
          * https://docs.stripe.com/api/payment_intents/create
          * Convert total_price (string) to number
          */
         const paymentIntent = await stripe.paymentIntents.create(
           {
-            amount: Number(booking.total_price) * 100, // convert EUR to cents
+            amount: Number(booking.total_price) * 100,
             currency: "eur",
             customer: user.stripe_customer_id,
+            payment_method: pm.payment_method_id,
+            // 'confirm: true' is uded to immediately charge the payment method.
+            // https://stripe.com/docs/payments/payment-intents/quickstart#confirm
+            // https://docs.stripe.com/payments/accept-a-payment-synchronously
+            confirm: true,
+            // 'off_session: true' tells Stripe the customer is not present, allowing
+            // background/automatic charges without 3D Secure prompts.
+            // This is needed fro cron https://console.cron-job.org/jobs/7220668/history
+            // https://support.stripe.com/questions/what-is-the-difference-between-on-session-and-off-session-and-why-is-it-important
+            off_session: true,
             description: `Booking ${booking.id} charge`,
-            automatic_payment_methods: { enabled: true },
           },
           {
             // Ensures the same booking cannot be charged twice
@@ -131,16 +159,56 @@ Deno.serve(async () => {
         );
 
         /**
-         * 4. Mark booking as charged in the database.
+         * 4. Mark booking as charged, and fill the 'payment_intent_id', and
+         * the 'amount' columns in the 'bookings' table
          */
         await supabase
           .from("bookings")
-          .update({ charged: true })
+          .update({
+            charged: true,
+            payment_intent_id: paymentIntent.id,
+            amount: Number(booking.total_price),
+          })
           .eq("id", booking.id);
 
         /**
-        * This will show the response
-        */
+         * 5. Send GuestEase confirmation email about the successful payment
+         * 24h from check_in
+         */
+
+        // Retrieving the Resend key
+        const resendKey = Deno.env.get("RESEND_API_KEY");
+        if (!resendKey) {
+          console.error("Missing RESEND_API_KEY");
+        } else {
+          // Generate HTML for the email stored in paymentSuccessTemplate.ts
+          const html = paymentSuccessTemplate({ user, booking });
+
+          // Send email directly via Resend
+          const emailRes = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${resendKey}`,
+            },
+            body: JSON.stringify({
+              to: user.email,
+              from: "onboarding@resend.dev",
+              subject: "Your payment was successful!",
+              html,
+            }),
+          });
+
+          const emailText = await emailRes.text();
+          console.log("EMAIL RESPONSE:", emailText);
+
+          if (!emailRes.ok) {
+            console.error("Email failed:", emailText);
+          }
+        }
+
+        // Add this booking’s successful charge result to the overall cron run output.
+        // The `results` array is returned at the end of the job for logging/monitoring.
         results.push({
           booking_id: booking.id,
           status: "charged",
@@ -158,6 +226,8 @@ Deno.serve(async () => {
 
     console.log("Charge job finished with results:", results);
 
+    // Return the full list of per‑booking results as the JSON response
+    // for this cron run (used for logs, debugging, and monitoring).
     return new Response(JSON.stringify({ results }), {
       headers: { "Content-Type": "application/json" },
     });

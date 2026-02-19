@@ -407,7 +407,7 @@ const AdminBookingsPage: React.FC = () => {
           <PaymentDialog
             open={paymentDialogOpen}
             onClose={() => setPaymentDialogOpen(false)}
-            customerId={customerId}
+            // customerId={customerId}
             onSuccess={(paymentMethodId) => {
               /**
                * After Stripe returns a payment method,

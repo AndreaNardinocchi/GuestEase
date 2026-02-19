@@ -11,7 +11,7 @@ import type { User } from "../types/interfaces";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { getUserProfile } from "../api/guestease-api";
 import { AuthContext } from "../contexts/authContext";
-import AccountSubNav from "../accountSubNav/accountSubNav";
+import AccountSubNav from "../components/accountSubNav/accountSubNav";
 import EditProfileDialog from "../components/editProfileDialog/EditProfileDialog";
 import { deleteUserApi } from "../api/guestease-api";
 import AlertDialogSlide from "../components/deleteUserConfirm/deleteUserConfirm";
