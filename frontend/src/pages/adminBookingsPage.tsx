@@ -253,8 +253,8 @@ const AdminBookingsPage: React.FC = () => {
 
   /**
    * The below function will check whether the check-out date is the current
-   * date or is in the past. If that is the case, the 'Update' and 'Delete'
-   * buttons will grayed out
+   * date or is in the past. If that is the case, the 'Delete'
+   * button will get grayed out
    */
   function isCheckoutTodayOrPast(checkOut: string | Date): boolean {
     const today = new Date();
@@ -269,6 +269,26 @@ const AdminBookingsPage: React.FC = () => {
     // Returning the subtraction between checkout and today's time and whether true or false
     // 'True' if the check-out date is today or in the past, and 'False' if in the future
     return co.getTime() <= today.getTime();
+  }
+
+  /**
+   * The below function will check whether the check-in date is the current
+   * date or is in the past. If that is the case, the 'Update'
+   * button will get grayed out
+   */
+  function isCheckInTodayOrPast(checkIn: string | Date): boolean {
+    const today = new Date();
+    // Resetting today to midnight
+    // https://codetofun.com/js/date-sethours/
+    today.setHours(0, 0, 0, 0);
+
+    // Setting check-in date and hours
+    const ci = new Date(checkIn);
+    ci.setHours(0, 0, 0, 0);
+
+    // Returning the subtraction between checkin and today's time and whether true or false
+    // 'True' if the check-in date is today or in the past, and 'False' if in the future
+    return ci.getTime() <= today.getTime();
   }
 
   return (
@@ -346,6 +366,7 @@ const AdminBookingsPage: React.FC = () => {
                 const checkoutIsTodayOrPast = isCheckoutTodayOrPast(
                   b.check_out,
                 );
+                const checkInIsTodayOrPast = isCheckInTodayOrPast(b.check_in);
 
                 return (
                   <TableRow key={b.id}>
@@ -374,7 +395,7 @@ const AdminBookingsPage: React.FC = () => {
                       <Button
                         variant="outlined"
                         sx={{ mr: 1 }}
-                        disabled={checkoutIsTodayOrPast}
+                        disabled={checkInIsTodayOrPast}
                         onClick={() => handleOpenUpdateBooking(b)}
                       >
                         Update

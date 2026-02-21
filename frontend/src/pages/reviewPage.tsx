@@ -103,7 +103,7 @@ const ReviewPage: React.FC = () => {
             // Then it spins for 1.2 secs before redirecting
             setRedirectLoading(true);
             setTimeout(() => {
-              navigate("/account/mytrips");
+              navigate(`/room/${room.id}`);
             }, 1200);
           }, 1500);
         },

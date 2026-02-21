@@ -61,7 +61,9 @@ export default function AlertDialogSlide({
           check‑in.
           <br />
           ✓ Under extenuating circumstances, an administrator may cancel a
-          booking between 24 hours before check‑in and the check‑out time.{" "}
+          booking between 24 hours before check‑in and the check‑out time. As
+          per our refund policy, refunds apply only to nights starting from the
+          day after cancellation. The night of cancellation is non‑refundable.
           <br />
           ✓ Guests are responsible for any damages caused during their stay.
           <br />
