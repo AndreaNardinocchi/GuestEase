@@ -176,7 +176,8 @@ const RoomDetailsCard: React.FC<RoomDetailsCardProps> = ({
               value={checkIn}
               onChange={(e) => setCheckIn(e.target.value)}
               fullWidth
-              /** slotProps property.
+              /**
+               * slotProps property.
                * https://mui.com/material-ui/api/menu/#props
                * https://mui.com/material-ui/api/menu/#slots
                * */

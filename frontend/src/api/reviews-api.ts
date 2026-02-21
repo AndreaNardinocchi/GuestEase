@@ -97,3 +97,17 @@ export const getRoomReviews = async (roomId: string) => {
     return { ...review, guestName };
   });
 };
+
+/**
+ * This will fetch a review by booking
+ */
+export const getBookingReview = async (bookingId: string) => {
+  const { data: review, error } = await supabase
+    .from("reviews")
+    .select("*")
+    .eq("booking_id", bookingId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+
+  return review;
+};
