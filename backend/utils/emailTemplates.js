@@ -365,7 +365,7 @@ export function adminCancelledBookingTemplate({
         <td style="padding:26px; color:#472d30; font-size:15px; line-height:1.6;">
           <p>Hello <strong>${displayName}</strong>,</p>
 
-          <p>Your booking <strong>#${booking.id.slice(-8)}</strong> for 
+          <p>Your booking <strong>#${booking.id.slice(-12)}</strong> for 
           <strong>${room.name}</strong> has been cancelled by an administrator.</p>
 
           ${refundSection}
@@ -387,6 +387,88 @@ export function adminCancelledBookingTemplate({
             </tr>
           </table>
 
+        </td>
+      </tr>
+
+      <!-- Footer -->
+      <tr>
+        <td style="text-align:center; padding:18px; font-size:12px; color:#472d30;">
+          © ${new Date().getFullYear()} GuestEase. All rights reserved.
+        </td>
+      </tr>
+
+    </table>
+  </div>
+  `;
+}
+
+export function bookingCreatedByAdminTemplate({
+  profile,
+  room,
+  guests,
+  check_in,
+  check_out,
+  total_price,
+  logoUrl,
+  booking_id,
+  total_nights,
+}) {
+  const formattedId = `#${String(booking_id).slice(-12)}`;
+
+  return `
+  <div style="background:#f4f4f4; padding:20px; font-family:Arial, sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
+           style="max-width:600px; margin:auto; background:#ffffff; border-radius:10px; border:1px solid #472d3020; overflow:hidden;">
+
+      <!-- Logo -->
+      <tr>
+        <td style="padding:25px; text-align:center; background:#472d30;">
+          <img src="${logoUrl}" alt="GuestEase Logo" width="150" />
+        </td>
+      </tr>
+
+      <!-- Header -->
+      <tr>
+        <td style="padding:20px; text-align:center; background:#E26D5C;">
+          <h2 style="margin:0; font-weight:600; font-size:22px; color:#fff;">
+            Your Booking Has Been Created 🧡
+          </h2>
+          <p style="margin:8px 0 0; font-size:14px; color:#fff; opacity:0.9;">
+            Booking ID: <strong>${formattedId}</strong>
+          </p>
+        </td>
+      </tr>
+
+      <!-- Body -->
+      <tr>
+        <td style="padding:26px; color:#472d30; font-size:15px; line-height:1.6;">
+          <p>Hello <strong>${profile.first_name ?? profile.email}</strong>,</p>
+
+          <p>Your booking has been successfully created by a GuestEase administrator.  
+          We're delighted to confirm your stay and ensure everything is prepared for your arrival.</p>
+
+          <p>Here are the details of your upcoming stay:</p>
+
+          <!-- Room Details -->
+          <div style="background:#fff3ef; border-left:4px solid #E26D5C; padding:16px; margin:20px 0; border-radius:6px;">
+            <p><strong>Room:</strong> ${room.name}</p>
+              <p><strong>Guests:</strong> ${guests}</p>
+            <p><strong>Check-in:</strong> ${check_in}</p>
+            <p><strong>Check-out:</strong> ${check_out}</p>
+            <p><strong>Total Nights:</strong> ${total_nights}</p>
+            <p><strong>Total Price:</strong> €${total_price.toFixed(2)}</p>
+          </div>
+
+          <p>If you need to review or manage your booking, you can do so anytime from your GuestEase account.</p>
+
+          <!-- Button -->
+          <div style="text-align:center; margin:28px 0;">
+            <a href="http://localhost:5173/account/mytrips"
+              style="background:#E26D5C; color:#fff; padding:12px 24px;
+              text-decoration:none; border-radius:6px; font-size:16px; font-weight:600;">
+              View My Trips
+            </a>
+          </div>
         </td>
       </tr>
 

@@ -1,6 +1,8 @@
 import express from "express";
 import { supabase } from "../supabaseClientBackend.js";
 import { calculateStay } from "../utils/calculateTotalPriceUtil.js";
+import { getPublicUrl } from "../utils/getPublicUrl.js";
+import { bookingCreatedByAdminTemplate } from "../utils/emailTemplates.js";
 
 /**
  * express.Router is a way to organize related routes together. This will allow us to apply
@@ -45,7 +47,7 @@ router.post("/admin/create-booking", async (req, res) => {
      */
     const { data: room, error: roomError } = await supabase
       .from("rooms")
-      .select("price")
+      .select("price, name, capacity")
       .eq("id", room_id)
       .single();
 
@@ -54,14 +56,18 @@ router.post("/admin/create-booking", async (req, res) => {
     }
 
     // This ensures consistent pricing logic across the entire app.
-    const { total_price } = calculateStay(check_in, check_out, room.price);
+    const { total_price, nights: total_nights } = calculateStay(
+      check_in,
+      check_out,
+      room.price,
+    );
 
     /**
      * Insert the booking into the database.
      * Supabase insert reference:
      * https://supabase.com/docs/reference/javascript/insert
      **/
-    const { data, error } = await supabase
+    const { data: insertedBookings, error } = await supabase
       .from("bookings")
       .insert([
         { room_id, user_id: user.id, check_in, check_out, guests, total_price },
@@ -72,7 +78,37 @@ router.post("/admin/create-booking", async (req, res) => {
       return res.status(400).json({ error: error.message });
     }
 
-    return res.json({ success: true, booking: data[0] });
+    const profile = user;
+    // Extrapolating the booking id to be used in the confirmation email
+    const booking_id = insertedBookings[0].id;
+    // Fetching the GuestEase logo from Supabase storage
+    const logoUrl = getPublicUrl("assets", "GuestEaseLogo.png");
+
+    // Generate email HTML and passing through all needed parameters
+    const html = bookingCreatedByAdminTemplate({
+      profile,
+      room,
+      guests,
+      check_in,
+      check_out,
+      total_price,
+      logoUrl,
+      booking_id,
+      total_nights,
+    });
+
+    // Send email vua emailUtil.js
+    await fetch("http://localhost:3000/send_email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: profile.email,
+        subject: `Your Booking for ${room.name} at GuestEase has been created by the Admin 😔`,
+        body: html,
+      }),
+    });
+
+    return res.json({ success: true, booking: insertedBookings[0] });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
