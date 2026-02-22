@@ -95,6 +95,9 @@ const AdminBookingsPage: React.FC = () => {
   } = useQuery({
     queryKey: ["bookings"],
     queryFn: getAllBookings,
+    // This will ensure React Query will refetch data, to avoid stale data
+    // so that new bookigs are always synced
+    refetchOnMount: "always",
   });
 
   const {
