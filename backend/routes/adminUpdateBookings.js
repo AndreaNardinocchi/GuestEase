@@ -1,6 +1,8 @@
 import express from "express";
 import { supabase } from "../supabaseClientBackend.js";
 import { calculateStay } from "../utils/calculateTotalPriceUtil.js";
+import { getPublicUrl } from "../utils/getPublicUrl.js";
+import { bookingUpdatedByAdminTemplate } from "../utils/emailTemplates.js";
 
 /**
  * express.Router is a way to organize related routes together. This will allow us to apply
@@ -13,7 +15,7 @@ const router = express.Router();
 // ADMIN update Booking
 router.post("/admin/update-booking", async (req, res) => {
   // Extract the fields sent from the frontend.
-  // // These are the only values required to update a booking.
+  // These are the only values required to update a booking.
   const { booking_id, room_id, check_in, check_out, guests } = req.body;
 
   if (!booking_id || !room_id || !check_in || !check_out || !guests) {
@@ -34,7 +36,7 @@ router.post("/admin/update-booking", async (req, res) => {
     // Fetch the room price so we can recalculate the total stay cost.
     const { data: roomData, error: roomError } = await supabase
       .from("rooms")
-      .select("price")
+      .select("price, name, capacity")
       .eq("id", room_id)
       .single();
 
@@ -44,7 +46,11 @@ router.post("/admin/update-booking", async (req, res) => {
 
     // Recalculate the total price using the shared pricing utility.
     // This ensures consistent pricing logic across the entire app.
-    const { total_price } = calculateStay(check_in, check_out, roomData.price);
+    const { total_price, nights: total_nights } = calculateStay(
+      check_in,
+      check_out,
+      roomData.price,
+    );
 
     // Update the booking in the database.
     // Also return the updated booking along with the user's email via the foreign key join.
@@ -54,11 +60,53 @@ router.post("/admin/update-booking", async (req, res) => {
       .eq("id", booking_id)
       // PostgREST adds a special syntax for joins
       // https://postgrest.org/en/stable/references/api/resource_embedding.html#foreign-key-joins
-      .select("*, profiles!bookings_user_id_fkey(email)");
+      .select("*, profiles!bookings_user_id_fkey(email, first_name)");
 
     if (error) {
       return res.status(500).json({ error: error.message });
     }
+
+    // // Fetching user profile email and first name from supabase
+    // // We will use these data later when we will send email notifications
+    // const { data: profile, error: profileError } = await supabase
+    //   .from("profiles")
+    //   .select("first_name")
+    //   .eq("email", email)
+    //   .single();
+
+    // if (profileError || !profile) {
+    //   return res.status(400).json({ error: "User profile not found" });
+    // }
+    const profile = data[0].profiles;
+    console.log(profile.email);
+    console.log(profile.first_name);
+
+    // Fetching the GuestEase logo from Supabase storage
+    const logoUrl = getPublicUrl("assets", "GuestEaseLogo.png");
+
+    // Generate email HTML and passing through all needed parameters
+    const html = bookingUpdatedByAdminTemplate({
+      profile,
+      roomData,
+      guests,
+      check_in,
+      check_out,
+      total_price,
+      logoUrl,
+      booking_id,
+      total_nights,
+    });
+
+    // Send email vua emailUtil.js
+    await fetch("http://localhost:3000/send_email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: profile.email,
+        subject: `Your Booking for ${roomData.name} at GuestEase has been updated by the Admin 😔`,
+        body: html,
+      }),
+    });
 
     return res.json({ message: "Booking updated successfully", data });
   } catch (err) {
