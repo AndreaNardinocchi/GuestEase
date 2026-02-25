@@ -1,0 +1,147 @@
+/**
+ * 'Edge Functions are server-side TypeScript functions, distributed globally at the edge—close to your
+ * users. They can be used for listening to webhooks or integrating your Supabase project with third-parties
+ * like Stripe. Edge Functions are developed using Deno, which offers a few benefits to you as a developer'
+ *
+ * Imports Supabase Edge Runtime types for Deno.
+ * https://supabase.com/docs/guides/functions
+ */
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { leaveReviewTemplate } from "./leaveReviewTemplate.ts";
+
+/**
+ * Supabase JavaScript client for database operations.
+ * https://supabase.com/docs/reference/javascript
+ */
+import { createClient } from "jsr:@supabase/supabase-js@2";
+
+/**
+ * Initialize Supabase client using service role key.
+ * Service role key must be kept secret.
+ */
+const supabase = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+);
+
+/**
+ * Main server handler which runs automatically on schedule or invocation.
+ * https://deno.com/deploy/docs/runtime-fs#denoserve
+ */
+Deno.serve(async () => {
+  try {
+    const now = new Date();
+    console.log("Charge job started at", now.toISOString());
+
+    /**
+     * A fix that was needed:
+     * check_in is a DATE column, not a TIMESTAMP.
+     * We must compare date to date, otherwise bookings on the same day
+     * (e.g. check_in = "2026-02-14") won't match when cron https://console.cron-job.org/jobs/7220668/history
+     * runs later in the day.
+     * https://stackoverflow.com/questions/47066555/remove-time-after-converting-date-toisostring#55231024
+     */
+    const today = now.toISOString().split("T")[0];
+
+    /**
+     * 1. Fetch bookings with check-out today
+     * https://supabase.com/docs/reference/javascript/select
+     * Compare DATE strings instead of timestamps
+     * Limit to 5 bookings to avoid Supabase EarlyDrop timeouts
+     */
+    const { data: bookings, error } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("check_out", today)
+      .limit(5);
+
+    if (error) {
+      console.error("Error fetching bookings:", error);
+      return new Response(JSON.stringify({ error }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (!bookings || bookings.length === 0) {
+      console.log("No bookings to charge in this run.");
+      return new Response(JSON.stringify({ results: [] }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+        // For any booking we run the below
+    for (const booking of bookings) {
+      try {
+
+        // We fetch the user data that we are going to need to populate the email
+        const { data: user, error: userError } = await supabase
+          .from("profiles")
+          .select("first_name, last_name, email")
+          .eq("id", booking.user_id)
+          .single();
+
+        if (userError) {
+          console.error("Booking missing user relationship:", booking.id);
+          continue;
+        }
+
+           const { data: room, error: roomError } = await supabase
+          .from("rooms")
+          .select("name")
+          .eq("id", booking.room_id)
+          .single();
+
+        if (roomError) {
+          console.error("Booking missing user relationship:", booking.id);
+          continue;
+        }
+
+
+
+        // Retrieving the Resend key
+        const resendKey = Deno.env.get("RESEND_API_KEY");
+        if (!resendKey) {
+          console.error("Missing RESEND_API_KEY");
+          continue;
+        }
+
+        // Generate HTML for the email stored in leaveReviewTemplate.ts
+        const html = leaveReviewTemplate({ user, booking, room });
+
+        // Send email directly via Resend
+        const emailRes = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${resendKey}`,
+          },
+          body: JSON.stringify({
+            to: user.email,
+            from: "onboarding@resend.dev",
+            subject: `How was your stay in ${room.name} at GuestEase?`,
+            html,
+          }),
+        });
+
+        const emailText = await emailRes.text();
+        console.log("EMAIL RESPONSE:", emailText);
+
+        if (!emailRes.ok) {
+          console.error("Email failed:", emailText);
+        }
+      } catch (err: any) {
+        console.error("Error processing booking", booking.id, err);
+      }
+    }
+
+    return new Response(JSON.stringify({ status: "completed" }), {
+      headers: { "Content-Type": "application/json" },
+    });
+
+  } catch (err: any) {
+    console.error("Fatal error:", err);
+    return new Response(JSON.stringify({ error: err.message }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+});

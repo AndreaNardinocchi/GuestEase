@@ -65,7 +65,7 @@ const SignUpPage: React.FC = () => {
    * */
   const [confirmationMessage, setConfirmationMessage] = useState("");
   /**
-   * This state, instead, is used for leting the user know that they
+   * This state, instead, is used for letting the user know that they
    * have tried to sign up with an email already registered.
    */
   const [rejectionMessage, setRejectionMessage] = useState("");

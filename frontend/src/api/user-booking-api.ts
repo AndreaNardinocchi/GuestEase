@@ -1,5 +1,7 @@
 import { supabase } from "../supabase/supabaseClient";
 
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
 /**
  * This is a helper which sends a POST request to the backend to create a new booking.
  */
@@ -16,7 +18,7 @@ export const createBookingApi = async (bookingData: {
    * POST /user/create_booking
    * https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
    */
-  const res = await fetch("http://localhost:3000/user/create_booking", {
+  const res = await fetch(`${backendUrl}/user/create_booking`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     /**
@@ -66,7 +68,7 @@ export const updateBookingApi = async (updateData: {
    * The backend route is defined in Express as:
    * POST /user/update-booking
    */
-  const res = await fetch("http://localhost:3000/user/update-booking", {
+  const res = await fetch(`${backendUrl}/user/update-booking`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     /**
@@ -111,7 +113,7 @@ export const cancelBookingApi = async (bookingId: string) => {
    * The backend route is defined in Express as:
    * POST /user/cancel-booking
    */
-  const res = await fetch("http://localhost:3000/user/cancel-booking", {
+  const res = await fetch(`${backendUrl}/user/cancel-booking`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     /**
@@ -148,7 +150,7 @@ export const cancelBookingApi = async (bookingId: string) => {
  * https://docs.stripe.com/api/setup_intents/create
  */
 export const createSetupIntentApi = async (customerId: string) => {
-  const res = await fetch("http://localhost:3000/create-setup-intent", {
+  const res = await fetch(`${backendUrl}/create-setup-intent`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     /**
@@ -183,7 +185,7 @@ export const createStripeCustomerApi = async (params: {
   email: string;
   userId: string;
 }) => {
-  const res = await fetch("http://localhost:3000/create-stripe-customer", {
+  const res = await fetch(`${backendUrl}/create-stripe-customer`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
@@ -208,7 +210,7 @@ export const savePaymentMethodApi = async (params: {
   userId: string;
   paymentMethodId: string;
 }) => {
-  const res = await fetch("http://localhost:3000/save-payment-method", {
+  const res = await fetch(`${backendUrl}/save-payment-method`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     /**

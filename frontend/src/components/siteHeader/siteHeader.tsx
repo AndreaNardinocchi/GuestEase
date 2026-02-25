@@ -131,17 +131,29 @@ const SiteHeader: React.FC = () => {
   const navigate = useNavigate();
 
   /**
-   * Access the Material UI theme object
+   * Provides access to the Material UI theme object, which holds styling info like colors,
+   * typography, breakpoints, and mixins. Here, we use it to get responsive breakpoint info.
    * https://reactnavigation.org/docs/use-theme/
-   * */
+   */
   const theme = useTheme();
+
+  /**
+   * Material UI provides the useMediaQuery hook to simplify the implementation of media queries, i.e.
+   * to query properties of the browser/device running the app. We are querying the browser’s viewport dimensions,
+   * checking if they are in the medium (md) or smaller category - a mobile device.
+   * The Theme object includes helper methods that generate the query string necessary to express the media query,
+   * When the browser/device is a mobile type, the site header should render the drop-down menu;
+   * otherwise, the standard navigation links should render.
+   * https://mui.com/material-ui/react-menu/
+   */
   const isMobile = useMediaQuery(theme.breakpoints.down("lg"));
 
   /**
-   * Anchor element for the mobile dropdown menu.
-   * When null the menu is closed.
-   * When set, then, menu opens at that element's position.
-   * https://mui.com/material-ui/react-menu/
+   * This returns true if the screen width is less than or equal to the 'lg' breakpoint
+   * width (usually 1280px). We use this boolean to render a hamburger menu on
+   * smaller screens and a full menu on larger screens.
+   * This approach adapts the UI responsively for better usability on phones/tablets
+   * vs desktops.
    */
   const [mobileAnchorEl, setMobileAnchorEl] = useState<null | HTMLElement>(
     null,

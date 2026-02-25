@@ -66,17 +66,6 @@ router.post("/admin/update-booking", async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
-    // // Fetching user profile email and first name from supabase
-    // // We will use these data later when we will send email notifications
-    // const { data: profile, error: profileError } = await supabase
-    //   .from("profiles")
-    //   .select("first_name")
-    //   .eq("email", email)
-    //   .single();
-
-    // if (profileError || !profile) {
-    //   return res.status(400).json({ error: "User profile not found" });
-    // }
     const profile = data[0].profiles;
     console.log(profile.email);
     console.log(profile.first_name);

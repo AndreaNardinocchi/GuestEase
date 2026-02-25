@@ -60,9 +60,11 @@ router.post("/user/create_booking", async (req, res) => {
       .select("email, first_name")
       .eq("id", userId)
       .single();
+
     if (profileError || !profile) {
       return res.status(400).json({ error: "User profile not found" });
     }
+
     /**
      * Creating/inserting the booking in supabase
      */
@@ -72,6 +74,7 @@ router.post("/user/create_booking", async (req, res) => {
         { room_id, user_id: userId, check_in, check_out, guests, total_price },
       ])
       .select();
+
     if (insertError || !insertedBookings?.length) {
       return res
         .status(500)

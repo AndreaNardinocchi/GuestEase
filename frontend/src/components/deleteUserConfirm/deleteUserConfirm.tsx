@@ -52,12 +52,14 @@ export default function AlertDialogSlide({
         <DialogContentText id="alert-dialog-slide-description">
           ** THIS ACTION IS IRREVERSIBLE **
           <br />
-          To be able to delete your account, you must not have any active
-          reservations!
+          To be able to delete this account, there should not be any active
+          reservations associated to it!
         </DialogContentText>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={onClose} sx={{ color: "#472d30" }}>
+          Cancel
+        </Button>
         <Button color="error" onClick={onConfirm}>
           Delete
         </Button>

@@ -16,6 +16,8 @@ import type { Session, User as SupaUser } from "@supabase/supabase-js";
 export const AuthContext = createContext<AuthContextInterface | null>(null);
 
 const AuthContextProvider: React.FC<React.PropsWithChildren> = (props) => {
+  const frontendUrl = import.meta.env.VITE_FRONTEND_URL;
+
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
 
@@ -151,7 +153,7 @@ const AuthContextProvider: React.FC<React.PropsWithChildren> = (props) => {
 
     try {
       const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: "http://localhost:5173/update-password", // It will be replaced by the deployed URL
+        redirectTo: `${frontendUrl}/update-password`, // It will be replaced by the deployed URL
       });
 
       if (error) {
