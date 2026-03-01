@@ -30,9 +30,9 @@ export const experiences: Experience[] = [
   },
   {
     id: 2,
-    title: "Seaweed Soak, Sure Why Not",
+    title: "Seaweed Soak, Why Not",
     description:
-      "Slip into a warm Atlantic seaweed bath and let the stress melt away. Pure Irish wellness, with a bit of salty magic.",
+      "Slip into a warm Atlantic seaweed bath and let the stress melt away. Pure Irish wellness, with a bit of salty magic. Sure, why not?",
     image: getPublicUrl("seaweed-bath.jpg"),
   },
   {
