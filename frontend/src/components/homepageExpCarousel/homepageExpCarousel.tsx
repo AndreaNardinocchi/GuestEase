@@ -87,6 +87,12 @@ const HomepageExpCarousel = ({
             zIndex: 10,
             bgcolor: "white",
             boxShadow: 2,
+            "&:hover": { bgcolor: "white" },
+            "&:active": { bgcolor: "white" },
+            "&:focus": { bgcolor: "white" },
+            "&:focusVisible": { bgcolor: "white" },
+            // https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/-webkit-tap-highlight-color
+            "-webkit-tap-highlight-color": "transparent",
           }}
         >
           <ArrowBackIosNewIcon />
@@ -144,6 +150,11 @@ const HomepageExpCarousel = ({
             zIndex: 10,
             bgcolor: "white",
             boxShadow: 2,
+            "&:hover": { bgcolor: "white" },
+            "&:active": { bgcolor: "white" },
+            "&:focus": { bgcolor: "white" },
+            "&:focusVisible": { bgcolor: "white" },
+            "-webkit-tap-highlight-color": "transparent",
           }}
         >
           <ArrowForwardIosIcon />

@@ -13,6 +13,8 @@ const router = express.Router();
 router.post("/admin/delete-user", async (req, res) => {
   // Retrieving the user id from the body
   const { userId, role } = req.body;
+  console.log("DELETE USER BODY:", req.body); // ← ADD IT HERE
+
   /**
    * Delete the user from Supabase Auth
    * This removes the authentication identity (email/password, login access).
