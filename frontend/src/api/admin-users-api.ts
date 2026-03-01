@@ -1,3 +1,5 @@
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
 /**
  * Create User (Admin)
  * Sends a POST request to the admin backend to create a user.
@@ -10,7 +12,7 @@ export const adminCreateUserApi = async (userForm: {
   country: string;
   zip_code: string;
 }) => {
-  const res = await fetch("http://localhost:3000/admin/create-user", {
+  const res = await fetch(`${backendUrl}/admin/create-user`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(userForm),
@@ -39,7 +41,7 @@ export const adminUpdateUserApi = async (userForm: {
   country: string;
   zip_code: string;
 }) => {
-  const res = await fetch("http://localhost:3000/admin/update-user", {
+  const res = await fetch(`${backendUrl}/admin/update-user`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(userForm),
@@ -58,7 +60,7 @@ export const adminUpdateUserApi = async (userForm: {
  * Delete User (Admin)
  */
 export const adminDeleteUserApi = async (id: string, role: string | null) => {
-  const res = await fetch("http://localhost:3000/admin/delete-user", {
+  const res = await fetch(`${backendUrl}/admin/delete-user`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userId: id }),

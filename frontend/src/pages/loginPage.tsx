@@ -137,7 +137,7 @@ const LoginPage: React.FC = () => {
 
     navigate(redirectPath, {
       replace: true,
-      // state: { path: location.pathname },
+      state: { path: location.pathname },
     });
   };
 
@@ -256,7 +256,7 @@ const LoginPage: React.FC = () => {
                       setEmailError(true);
                       return;
                     }
-
+                    // https://supabase.com/docs/reference/javascript/auth-resetpasswordforemail
                     const result = await auth?.resetPassword(email);
                     /**
                      * If the email is not in supabase, throw an error

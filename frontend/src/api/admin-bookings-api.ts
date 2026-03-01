@@ -1,3 +1,5 @@
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
 /**
  * Create Booking (Admin)
  * Sends a POST request to the admin backend to create a booking.
@@ -9,7 +11,7 @@ export const adminCreateBookingApi = async (bookingData: {
   check_out: string;
   guests: number;
 }) => {
-  const res = await fetch("http://localhost:3000/admin/create-booking", {
+  const res = await fetch(`${backendUrl}/admin/create-booking`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(bookingData),
@@ -35,7 +37,7 @@ export const adminUpdateBookingApi = async (updateData: {
   guests: number;
   payment_method_id?: string;
 }) => {
-  const res = await fetch("http://localhost:3000/admin/update-booking", {
+  const res = await fetch(`${backendUrl}/admin/update-booking`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(updateData),
@@ -54,7 +56,7 @@ export const adminUpdateBookingApi = async (updateData: {
  * Delete / Cancel Booking (Admin)
  */
 export const adminCancelBookingApi = async (booking_id: string) => {
-  const res = await fetch("http://localhost:3000/admin/cancel-booking", {
+  const res = await fetch(`${backendUrl}/admin/cancel-booking`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ booking_id }),

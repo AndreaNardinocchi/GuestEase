@@ -7,6 +7,8 @@ import { getPublicUrl } from "../utils/getPublicUrl.js";
 import { bookingCancelledTemplate } from "../utils/emailTemplates.js";
 import { calculateStay } from "../utils/calculateTotalPriceUtil.js";
 
+const backendUrl = process.env.BACKEND_URL;
+
 /**
  * express.Router is a way to organize related routes together. This will allow us to apply
  * middleware for different parts of our app.
@@ -108,7 +110,7 @@ router.post("/user/cancel-booking", async (req, res) => {
     });
 
     // Send email vua emailUtil.js
-    await fetch("http://localhost:3000/send_email", {
+    await fetch(`${backendUrl}/send_email`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

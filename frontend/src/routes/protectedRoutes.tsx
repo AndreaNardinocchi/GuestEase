@@ -13,10 +13,10 @@ const ProtectedRoute: React.FC<React.PropsWithChildren> = (props) => {
   const { token, loading } = authContext || {};
   const location = useLocation();
   // If loading return circular progress in case of any delays in retrieving user data
-  console.log(
-    "PROTECTED ROUTE — redirecting to login with intent:",
-    location.pathname + location.search,
-  );
+  // console.log(
+  //   "PROTECTED ROUTE — redirecting to login with intent:",
+  //   location.pathname + location.search,
+  // );
 
   if (loading) {
     return (

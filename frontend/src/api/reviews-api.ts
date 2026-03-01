@@ -1,8 +1,10 @@
-// import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../supabase/supabaseClient";
 import { reviewEmailTemplate } from "../utils/reviewEmail";
 import { getPublicUrl } from "../utils/supabaseAssetsStorage";
 import { getBookingById, getRoomById, getUserProfile } from "./guestease-api";
+
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
+const frontendUrl = import.meta.env.VITE_FRONTEND_URL;
 
 /**
  * This is a function to submit a review.
@@ -44,10 +46,10 @@ export const submitReview = async (payload: {
     user_name: user?.first_name ?? "Guest",
     comment,
     logoUrl,
-    adminDashboardUrl: "http://localhost:5173/admin/reviews",
+    adminDashboardUrl: `${frontendUrl}/admin/reviews`,
   });
 
-  const res = await fetch("http://localhost:3000/send_email", {
+  const res = await fetch(`${backendUrl}/send_email`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

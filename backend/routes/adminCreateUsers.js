@@ -4,6 +4,9 @@ import { createStripeCustomer } from "../utils/createStripeCustomerUtil.js";
 import { getPublicUrl } from "../utils/getPublicUrl.js";
 import { userCreatedTemplate } from "../utils/emailTemplates.js";
 
+const frontendUrl = process.env.FRONTEND_URL;
+const backendUrl = process.env.BACKEND_URL;
+
 /**
  * express.Router is a way to organize related routes together. This will allow us to apply
  * middleware for different parts of our app.
@@ -103,7 +106,7 @@ router.post("/admin/create-user", async (req, res) => {
     const { data: reset } = await supabase.auth.admin.generateLink({
       type: "recovery",
       email,
-      options: { redirectTo: "http://localhost:5173/update-password" },
+      options: { redirectTo: `${frontendUrl}/update-password` },
     });
 
     // Fetching the tokenizedLink
@@ -121,7 +124,7 @@ router.post("/admin/create-user", async (req, res) => {
     });
 
     // Send confirmation email to the user that their account has been created
-    await fetch("http://localhost:3000/send_email", {
+    await fetch(`${backendUrl}/send_email`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

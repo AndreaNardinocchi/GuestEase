@@ -1,3 +1,5 @@
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
 /**
  * Fetch all rooms from the Supabase "rooms" table.
  * It uses the Supabase client to query the "rooms" table.
@@ -118,7 +120,7 @@ export const deleteUserApi = async (userId: string) => {
     .single();
 
   if (error) throw new Error(error.message);
-  const res = await fetch("http://localhost:3000/user/delete-account", {
+  const res = await fetch(`${backendUrl}/user/delete-account`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     /**

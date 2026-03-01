@@ -25,6 +25,8 @@ import sendEmailRouter from "./utils/emailUtil.js";
 // --------------------
 dotenv.config();
 
+const frontendUrl = process.env.FRONTEND_URL;
+
 // --------------------
 // APP SETUP
 // --------------------
@@ -34,7 +36,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: `${frontendUrl}`,
     credentials: true,
   }),
 );
@@ -69,6 +71,10 @@ app.use(stripeSavePayment);
 app.use(createStripeCustomer);
 app.use(adminCreateUsers);
 app.use(adminUpdateUsers);
+
+app.get("/", (req, res) => {
+  res.send("GuestEase Backend is running");
+});
 
 /* --------------------
    START SERVER
