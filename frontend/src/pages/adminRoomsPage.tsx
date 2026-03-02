@@ -106,7 +106,16 @@ const AdminRoomsPage: React.FC = () => {
   };
 
   const handleOpenUpdateRoom = (r: Room) => {
-    const imgs = r.images;
+    // const imgs = r.images;
+    // setExistingImages(imgs);
+    /**
+     * Supabase may return 'images: null' for some rooms, especially older or seeded records.
+     * If we passed 'r.images' directly into state, 'existingImages' could become `null`,
+     * which would later break the update flow when we spread it ('...existingImages')
+     * because 'null' is not iterable.
+     * Normalizing to an empty array guarantees that 'existingImages' is always a safe, iterable array.
+     */
+    const imgs = Array.isArray(r.images) ? r.images : [];
     setExistingImages(imgs);
 
     setEditingRoom(r);

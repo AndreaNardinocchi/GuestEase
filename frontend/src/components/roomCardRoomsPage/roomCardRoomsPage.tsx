@@ -25,6 +25,10 @@ const RoomCardRoomsPage: React.FC<{ room: Room }> = ({ room }) => {
   // Using the below function to get the average review rating
   const avgRating = calculateAverageRating(reviews);
 
+  // We create this variable for an extra layer of safety to avoid page breaks
+  // whenever for some reason the first image turns out to be 'null'
+  const firstImage = room.images?.[0];
+
   return (
     <Box
       // The key will via the room id in Supabase the room to show in the below card
@@ -91,9 +95,11 @@ const RoomCardRoomsPage: React.FC<{ room: Room }> = ({ room }) => {
              * the admin and will show the uploaded path. Otherwise, it will enable the old image path display, whose
              * image was originally manually uploaded straight into supabase
              */
-            room.images?.[0]?.includes("rooms/")
-              ? getPublicUrl(room.images[0]) // New uploaded images
-              : getPublicUrl(`rooms/${room.id}/${room.images[0]}`) // Old seeded images
+            firstImage
+              ? firstImage.includes("rooms/")
+                ? getPublicUrl(firstImage)
+                : getPublicUrl(`rooms/${room.id}/${firstImage}`)
+              : "/placeholder-room.jpg" // fallback image
           }
           alt={room.name}
         />
