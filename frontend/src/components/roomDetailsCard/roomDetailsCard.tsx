@@ -167,7 +167,7 @@ const RoomDetailsCard: React.FC<RoomDetailsCardProps> = ({
             sx={{
               display: "grid",
               gridTemplateColumns: "repeat(2, 1fr)",
-              gap: 2,
+              gap: { xs: 0.5, sm: 2 },
             }}
           >
             <TextField
