@@ -13,7 +13,26 @@ const router = express.Router();
 router.post("/admin/delete-user", async (req, res) => {
   // Retrieving the user id from the body
   const { userId, role } = req.body;
-  console.log("DELETE USER BODY:", req.body); // ← ADD IT HERE
+
+  /**
+   * To be able to show a message stating that the user cannot be deleted
+   * as long as they have bookings, we first check if they have any by
+   * fetching them from Supabase
+   */
+  const { data: bookings, error: bookingsError } = await supabase
+    .from("bookings")
+    .select("id")
+    .eq("user_id", userId);
+  if (bookingsError) {
+    return res.status(500).json({ error: "Error checking user bookings." });
+  }
+
+  // If they do, we will show the below error message foe a better UI experience
+  if (bookings.length > 0) {
+    return res.status(400).json({
+      error: "User cannot be deleted because they still have bookings.",
+    });
+  }
 
   /**
    * Delete the user from Supabase Auth

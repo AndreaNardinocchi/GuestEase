@@ -40,7 +40,7 @@ const Footer: React.FC = () => {
           {/**  Column 1 */}
           <Box
             sx={{
-              width: { xs: "100%", sm: "33.333%" },
+              width: { xs: "100%", sm: "25%" },
               mb: { xs: 4, sm: 0 },
               textAlign: {
                 xs: "center",
@@ -119,7 +119,7 @@ const Footer: React.FC = () => {
           {/** Column 2 */}
           <Box
             sx={{
-              width: { xs: "100%", sm: "33.333%" },
+              width: { xs: "100%", sm: "25%" },
               mb: { xs: 4, sm: 0 },
               textAlign: { xs: "center", sm: "left" },
             }}
@@ -196,7 +196,43 @@ const Footer: React.FC = () => {
 
           <Box
             sx={{
-              width: { xs: "100%", sm: "33.333%" },
+              width: { xs: "100%", sm: "25%" },
+              mb: { xs: 4, sm: 0 },
+              textAlign: { xs: "center", sm: "left" },
+            }}
+          >
+            <Box
+              sx={{
+                paddingLeft: {
+                  xs: "0%",
+                  sm: "10%",
+                  md: "15%",
+                  lg: "5%",
+                },
+              }}
+            >
+              <Typography variant="h4" gutterBottom>
+                Support
+              </Typography>
+
+              <Link
+                href="mailto:setuproject.guesteasebb@gmail.com"
+                target="_blank"
+                rel="noopener"
+                color="inherit"
+                underline="hover"
+                display="block"
+              >
+                <Typography sx={{ fontSize: "1.3rem", pb: 0.5 }}>
+                  Contact Us
+                </Typography>
+              </Link>
+            </Box>
+          </Box>
+          {/** Column 4 */}
+          <Box
+            sx={{
+              width: { xs: "100%", sm: "25%" },
               display: "flex",
               justifyContent: "center",
               alignItems: "center",
