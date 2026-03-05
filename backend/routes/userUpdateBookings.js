@@ -103,7 +103,7 @@ router.post("/user/update-booking", async (req, res) => {
 
     return res.json({ success: true, booking: updatedBooking, newTotal });
   } catch (err) {
-    console.error("UPDATE BOOKING ERROR:", err);
+    // console.error("UPDATE BOOKING ERROR:", err);
     return res.status(500).json({ error: err.message });
   }
 });

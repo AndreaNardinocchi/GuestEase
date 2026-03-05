@@ -52,8 +52,10 @@ export default function AlertDialogSlide({
       <DialogContent>
         <DialogContentText id="alert-dialog-slide-description">
           ** THIS ACTION IS IRREVERSIBLE **
-          <br />
-          No charge will be applied upon cancelling this reservation!
+          <br />{" "}
+          {/* No charge will be applied upon cancelling this reservation! */}
+          This reservation will be cancelled in accordance with our cancellation
+          policy.
         </DialogContentText>
       </DialogContent>
       <DialogActions>

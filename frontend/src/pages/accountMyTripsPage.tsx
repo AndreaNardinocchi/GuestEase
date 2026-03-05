@@ -214,7 +214,7 @@ const AccountMyTripsPage: React.FC = () => {
    */
   const upcomingBookings = (data ?? []).filter((b) => {
     const checkout = new Date(b.check_out);
-    console.log("Upcoming: ", checkout >= today);
+    // console.log("Upcoming: ", checkout >= today);
     return checkout >= today;
   });
 
@@ -224,7 +224,7 @@ const AccountMyTripsPage: React.FC = () => {
    */
   const pastBookings = (data ?? []).filter((b) => {
     const checkout = new Date(b.check_out);
-    console.log("Past: ", checkout < today);
+    // console.log("Past: ", checkout < today);
     return checkout < today;
   });
 

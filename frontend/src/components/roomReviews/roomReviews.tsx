@@ -56,7 +56,7 @@ const RoomReviews: React.FC<RoomReviewProps> = ({ roomId }) => {
       )}
 
       {visibleReviews?.map((review) => {
-        console.log("PROFILE:", review.profile, "USER_ID:", review.user_id);
+        // console.log("PROFILE:", review.profile, "USER_ID:", review.user_id);
 
         return (
           <Box
@@ -83,7 +83,10 @@ const RoomReviews: React.FC<RoomReviewProps> = ({ roomId }) => {
                 {review.guestName}
               </Typography>
 
-              {/* Star rating */}
+              {/* 
+              Star rating 
+              https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/repeat
+              */}
               <Typography sx={{ color: "#e26d5c", fontWeight: 600 }}>
                 {"★".repeat(review.rating)}
                 {"☆".repeat(5 - review.rating)}

@@ -216,7 +216,8 @@ const Footer: React.FC = () => {
               </Typography>
 
               <Link
-                href="mailto:setuproject.guesteasebb@gmail.com"
+                // https://stackoverflow.com/questions/76198802/how-do-i-make-the-mailto-subject-and-body-tags-change-when-i-type-in-them-in-re
+                href={`mailto:setuproject.guesteasebb@gmail.com?subject=Guest%20Inquiry`}
                 target="_blank"
                 rel="noopener"
                 color="inherit"

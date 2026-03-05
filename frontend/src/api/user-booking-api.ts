@@ -62,7 +62,7 @@ export const updateBookingApi = async (updateData: {
     guests: number;
   };
 }) => {
-  console.log("UPDATES SENT TO BACKEND:", updateData);
+  // console.log("UPDATES SENT TO BACKEND:", updateData);
   /**
    * Send the updated booking data to the backend.
    * The backend route is defined in Express as:

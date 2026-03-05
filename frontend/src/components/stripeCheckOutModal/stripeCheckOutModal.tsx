@@ -162,7 +162,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
 
               // Notify the parent component that payment succeeded so it can create the booking now
               onSuccess(paymentMethodId);
-              console.log("NEW PAYMENT METHOD:", paymentMethodId);
+              // console.log("NEW PAYMENT METHOD:", paymentMethodId);
             } catch (err: any) {
               const msg =
                 err?.response?.data?.error ||
