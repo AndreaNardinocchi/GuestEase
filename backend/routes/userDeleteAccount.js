@@ -1,6 +1,5 @@
 import express from "express";
-import { supabase } from "../supabaseClientBackend.js"; // your service-role client
-
+import { supabase } from "../supabaseClientBackend.js";
 const router = express.Router();
 
 router.post("/user/delete-account", async (req, res) => {

@@ -1,4 +1,6 @@
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
+import { supabase } from "../supabase/supabaseClient";
+import { BookingWithUser, User } from "../types/interfaces";
 
 /**
  * Fetch all rooms from the Supabase "rooms" table.
@@ -7,9 +9,6 @@ const backendUrl = import.meta.env.VITE_BACKEND_URL;
  *
  * https://supabase.com/docs/reference/javascript/select
  */
-import { supabase } from "../supabase/supabaseClient";
-import { BookingWithUser, User } from "../types/interfaces";
-
 export const getRooms = async () => {
   const { data, error } = await supabase.from("rooms").select("*");
 

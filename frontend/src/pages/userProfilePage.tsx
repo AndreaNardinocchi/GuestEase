@@ -55,7 +55,7 @@ const UserProfilePage: React.FC = () => {
     queryKey: ["profile", user?.id],
     queryFn: () => getUserProfile(user!.id), // Calling in an api function to fetch a specific user in 'guestease-api'
   });
-  console.log("This is the profile", profile);
+  // console.log("This is the profile", profile);
 
   /**
    * We create a 'updateProfileMutation' function with useMutation.
@@ -309,7 +309,7 @@ const UserProfilePage: React.FC = () => {
                 .eq("user_id", user.id)
                 .gt("check_out", now);
 
-              console.log("Date:", now);
+              // console.log("Date:", now);
 
               if (bookingErr) {
                 return console.error(bookingErr);

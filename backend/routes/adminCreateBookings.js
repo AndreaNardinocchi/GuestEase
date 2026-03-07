@@ -105,7 +105,7 @@ router.post("/admin/create-booking", async (req, res) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         email: profile.email,
-        subject: `Your Booking for ${room.name} at GuestEase has been created by the Admin 😔`,
+        subject: `Your Booking for ${room.name} at GuestEase has been created by the Admin 😊`,
         body: html,
       }),
     });
