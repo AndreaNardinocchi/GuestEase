@@ -27,7 +27,7 @@ router.post("/admin/update-booking", async (req, res) => {
   // Validation
   const checkInDate = new Date(check_in);
   const checkOutDate = new Date(check_out);
-  console.log("CheckInOut: ", check_in, check_out);
+  // console.log("CheckInOut: ", check_in, check_out);
   if (checkOutDate <= checkInDate) {
     return res
       .status(400)
@@ -69,8 +69,8 @@ router.post("/admin/update-booking", async (req, res) => {
     }
 
     const profile = data[0].profiles;
-    console.log(profile.email);
-    console.log(profile.first_name);
+    // console.log(profile.email);
+    // console.log(profile.first_name);
 
     // Fetching the GuestEase logo from Supabase storage
     const logoUrl = getPublicUrl("assets", "GuestEaseLogo.png");
