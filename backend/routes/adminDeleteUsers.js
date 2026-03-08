@@ -16,21 +16,32 @@ router.post("/admin/delete-user", async (req, res) => {
 
   /**
    * To be able to show a message stating that the user cannot be deleted
-   * as long as they have bookings, we first check if they have any by
+   * as long as they have upcoming bookings, we first check if they have any by
    * fetching them from Supabase
    */
   const { data: bookings, error: bookingsError } = await supabase
     .from("bookings")
-    .select("id")
+    .select("id, check_out")
     .eq("user_id", userId);
   if (bookingsError) {
     return res.status(500).json({ error: "Error checking user bookings." });
   }
 
-  // If they do, we will show the below error message foe a better UI experience
-  if (bookings.length > 0) {
+  const today = new Date();
+
+  /**
+   * We create an array of bookings which are upcoming ones
+   * The check_out date must be bigger than today's date
+   */
+  const upcomingBookings = (bookings ?? []).filter((b) => {
+    const checkout = new Date(b.check_out);
+    return checkout >= today;
+  });
+
+  // If there upcoming bookings, we will show the below error message for a better UI experience
+  if (upcomingBookings.length > 0) {
     return res.status(400).json({
-      error: "User cannot be deleted because they still have bookings.",
+      error: "User cannot be deleted because they still have active bookings.",
     });
   }
 
