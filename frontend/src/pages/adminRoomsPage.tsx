@@ -403,7 +403,7 @@ const AdminRoomsPage: React.FC = () => {
                                   ? getPublicUrl(fullPath) // New uploaded images path
                                   : getPublicUrl(`rooms/${r.id}/${img}`) // old seeded images
                               }
-                              alt=""
+                              alt={r.name}
                               style={{
                                 width: 60,
                                 height: 60,

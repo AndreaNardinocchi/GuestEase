@@ -131,7 +131,6 @@ const AdminReviewsPage: React.FC = () => {
                 <TableCell
                   sx={{
                     fontWeight: "bold",
-                    // display: { xs: "none", sm: "table-cell" },
                   }}
                 >
                   Comment
@@ -139,7 +138,6 @@ const AdminReviewsPage: React.FC = () => {
                 <TableCell
                   sx={{
                     fontWeight: "bold",
-                    // display: { xs: "none", sm: "table-cell" },
                   }}
                 >
                   Created At
@@ -168,20 +166,9 @@ const AdminReviewsPage: React.FC = () => {
                     </Box>
                   </TableCell>
                   <TableCell>{r.rating}</TableCell>
-                  <TableCell
-                  // sx={{
-                  //   display: { xs: "none", sm: "table-cell" },
-                  //   maxWidth: 250,
-                  // }}
-                  >
-                    {r.comment}
-                  </TableCell>
+                  <TableCell>{r.comment}</TableCell>
 
-                  <TableCell
-                  // sx={{
-                  //   display: { xs: "none", sm: "table-cell" },
-                  // }}
-                  >
+                  <TableCell>
                     {new Date(r.created_at).toLocaleString()}
                   </TableCell>
                 </TableRow>

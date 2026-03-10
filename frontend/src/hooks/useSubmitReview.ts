@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { submitReview } from "../api/reviews-api";
 
 /**
- * React Query’s useMutation submit the review, then invalidates the
+ * React Query’s useMutation submits the review, then invalidates the
  * cached "reviews" query so fresh data is refetched.
  * https://tanstack.com/query/v4/docs/framework/react/guides/mutations
  * https://tanstack.com/query/v4/docs/framework/react/guides/query-invalidation

@@ -3952,6 +3952,353 @@ Overall, this component integrates React Context for authentication, React Query
 - https://tanstack.com/query/v4/docs/framework/react/guides/mutations#promises
 - https://www.geeksforgeeks.org/css/css-align-items-property/
 
+## Review page
+
+![alt text](image-59.png)
+
+This page is a guest-facing page that allows guests to submit a review for a room they booked. Here’s a clear explanation of what’s happening in the code:
+
+The page first extracts the booking ID from the URL using 'useParams():
+
+```ts
+const ReviewPage: React.FC = () => {
+  // Extracting the id
+  // https://reactrouter.com/api/hooks/useParams
+  const { id } = useParams();
+
+```
+
+The 'user context' is retrieved from 'AuthContext':
+
+```ts
+// We retrieve the user auth.users from supabase
+const auth = useContext(AuthContext);
+const { user } = auth || {};
+```
+
+Data fetching is then handled via custom hooks built on React Query:
+
+```ts
+/**
+ * Fetch the booking details using React Query.
+ * This provides booking.check_in, booking.check_out, booking.room_id, etc.
+ */
+const { data: booking, isLoading, error } = useUserFetchBooking(id);
+// We fetch the room id
+const { data: room } = useUserFetchRoom(booking?.room_id);
+// Here we fetch the user who made the booking
+const { data: profile } = useUserProfile(booking?.user_id);
+```
+
+**useUserFetchingBookings.ts**
+
+```ts
+import { useQuery } from "@tanstack/react-query";
+import { getBookingById } from "../api/guestease-api";
+
+export const useUserFetchBooking = (bookingId?: string | undefined) => {
+  return useQuery({
+    queryKey: ["bookings", bookingId],
+    queryFn: () => getBookingById(bookingId!),
+    enabled: !!bookingId, // only run when roomId exists
+  });
+};
+```
+
+**useUserFetchingRooms.ts**
+
+```ts
+import { useQuery } from "@tanstack/react-query";
+import { getRoomById } from "../api/guestease-api";
+
+export const useUserFetchRoom = (roomId?: string | undefined) => {
+  return useQuery({
+    queryKey: ["rooms", roomId],
+    queryFn: () => getRoomById(roomId!),
+    enabled: !!roomId, // only run when roomId exists
+  });
+};
+```
+
+**useFetchingUserProfile.ts**
+
+```ts
+import { useQuery } from "@tanstack/react-query";
+import { getUserProfile } from "../api/guestease-api";
+
+export const useUserProfile = (userId?: string | undefined) => {
+  return useQuery({
+    queryKey: ["profile", userId],
+    queryFn: () => getUserProfile(userId!),
+    enabled: !!userId, // only run when userId exists
+  });
+};
+```
+
+These hooks leverage the below API functions 'getBookingById()', 'getRoomById()', 'getUserProfile()' in the **api/guestease-api.ts** file:
+
+```ts
+/**
+ * This is a helper to fetch booking data by its id
+ */
+export const getBookingById = async (bookingId: string) => {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("*")
+    .eq("id", bookingId)
+    .single();
+
+  if (error) {
+    throw new Error(`Unable to fetch room: ${error.message}`);
+  }
+
+  return data;
+};
+
+.....
+
+/**
+ * This is a helper to fetch room data by its id to populate
+ * the Booking Confirmation page
+ */
+export const getRoomById = async (roomId: string) => {
+  const { data, error } = await supabase
+    .from("rooms")
+    .select("*")
+    .eq("id", roomId)
+    .single();
+
+  if (error) {
+    throw new Error(`Unable to fetch room: ${error.message}`);
+  }
+
+  return data;
+};
+
+...
+
+/**
+ * Fetch a single user profile from the Supabase "profiles" table.
+ * Requires the authenticated user's ID.
+ */
+export const getUserProfile = async (userId: string) => {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data;
+};
+```
+
+This way we are fetching the below data
+
+- The booking details ('check_in', 'check_out', 'room_id', etc.)
+- The room data for that booking
+- The profile of the user who made the booking
+
+Local UI state is managed using 'useState':
+
+```ts
+/**
+ * Local UI state for the review form.
+ * Rating defaults to 0, comment to an empty string.
+ */
+const [rating, setRating] = useState(0);
+const [comment, setComment] = useState("");
+
+// Controls visibility of the success snackbar
+const [snackbarOpen, setSnackbarOpen] = useState(false);
+
+// Stores the text that will appear inside the Snackbar
+const [snackbarMessage, setSnackbarMessage] = useState("");
+
+// Spinner before redirect
+const [redirectLoading, setRedirectLoading] = useState(false);
+```
+
+The review submission, then, is handled using a React Query mutation:
+
+```ts
+/**
+ * React Query mutation hook for submitting a review.
+ * On success, it invalidates ["reviews"] so any review lists refresh.
+ */
+const submitReviewMutation = useSubmitReview();
+const queryClient = useQueryClient();
+```
+
+**hooks/useSubmitReview.ts**
+
+```ts
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { submitReview } from "../api/reviews-api";
+
+/**
+ * React Query’s useMutation submits the review, then invalidates the
+ * cached "reviews" query so fresh data is refetched.
+ * https://tanstack.com/query/v4/docs/framework/react/guides/mutations
+ * https://tanstack.com/query/v4/docs/framework/react/guides/query-invalidation
+ */
+export const useSubmitReview = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: submitReview,
+    onSuccess: (_data, variables) => {
+      // Refresh list
+      queryClient.invalidateQueries({ queryKey: ["reviews"] });
+      // Refresh the specific room page
+      queryClient.invalidateQueries({ queryKey: ["rooms", variables.room_id] });
+      // Refresh the reviews associated with that room page
+      queryClient.invalidateQueries({
+        queryKey: ["roomReviews", variables.room_id],
+      });
+    },
+  });
+};
+```
+
+The above hook submits the review via the 'submitReview()' API function in the **review-api.ts** file in which we create a review payload, which will thwn be used to insert the newly created 'review' into the Supabase table 'reviews'. The rest of the variables are created to populate the email notification that will be sent off to the admin email, so that the admin is informed.
+
+```ts
+/**
+ * This is a function to submit a review.
+ * We create a payload with all fields in the supabase 'revies' table and insert
+ * it.
+ * https://supabase.com/docs/reference/javascript/insert
+ */
+export const submitReview = async (payload: {
+  booking_id: string;
+  room_id: string;
+  user_id: string;
+  rating: number;
+  comment: string;
+}) => {
+  const { booking_id, rating, comment } = payload;
+  const { error } = await supabase.from("reviews").insert({
+    ...payload,
+    created_at: new Date(),
+  });
+  if (error) throw new Error(error.message);
+
+  // Retrieving all objects needed for the email parameters
+  const room = await getRoomById(payload.room_id);
+  const booking = await getBookingById(payload.booking_id);
+  const user = await getUserProfile(payload.user_id);
+
+  // Fetching the GuestEase logo from the Supabase storage
+  const logoUrl = getPublicUrl("GuestEaseLogo.png");
+  const adminEmail = import.meta.env.VITE_RESEND_ADMIN_EMAIL;
+
+  // Generate the full HTML for the booking confirmation email using the template
+  // and pass the below values
+  const html = reviewEmailTemplate({
+    booking_id,
+    check_in: booking.check_in,
+    check_out: booking.check_out,
+    rating,
+    room_name: room?.name ?? "Unknown Room",
+    user_name: user?.first_name ?? "Guest",
+    comment,
+    logoUrl,
+    adminDashboardUrl: `${frontendUrl}/admin/reviews`,
+  });
+
+  const res = await fetch(`${backendUrl}/send_email`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: adminEmail,
+      subject: "New Review Submitted",
+      body: html,
+    }),
+  });
+
+  return true;
+};
+```
+
+The 'handleSubmit()' function will submit the review to initiate the mutation:
+
+```ts
+const submitReviewMutation = useSubmitReview();
+const queryClient = useQueryClient();
+
+.....
+
+const handleSubmit = () => {
+    if (!booking || !room || !user) return;
+    if (!rating || !comment.trim()) {
+      setSnackbarMessage("Please provide both rating and comment.");
+      setSnackbarOpen(true);
+      return;
+    }
+
+    submitReviewMutation.mutate(
+      {
+        booking_id: booking.id,
+        room_id: room.id,
+        user_id: user.id,
+        rating,
+        comment,
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["rooms", room.id] });
+          setSnackbarMessage("Review submitted!");
+          setSnackbarOpen(true);
+          // It holds up the snackbar for 1.5 secs
+          setTimeout(() => {
+            // Then it spins for 1.2 secs before redirecting
+            setRedirectLoading(true);
+            setTimeout(() => {
+              navigate(`/room/${room.id}`);
+            }, 1200);
+          }, 1500);
+        },
+        onError: (err: any) => {
+          if (
+            err.message.includes("duplicate") ||
+            err.message.includes("unique")
+          ) {
+            setSnackbarMessage(
+              "You have already submitted a review for this stay.",
+            );
+          } else {
+            setSnackbarMessage(
+              "Something went wrong while submitting your review.",
+            );
+          }
+          setSnackbarOpen(true);
+        },
+      },
+    );
+  };
+
+```
+
+In essence what we are doing here is:
+
+- Checking that a booking, room, and user exist
+- Ensuring both a rating and comment are provided
+- Submitting the review via 'useSubmitReview' mutation
+- Showing success or error feedback using a Snackbar
+- Invalidating the room query to refresh the data
+- Redirecting the user to the room page after a short delay
+
+The email notofication sent out to the Admin is the last step of the flow:
+
+![alt text](image-60.png)
+
+### Source attirbutions
+
+- https://reactrouter.com/api/hooks/useParams
+- https://mui.com/system/grid/#css-grid-layout
+- https://mui.com/material-ui/react-snackbar/
+
 ## Admin Booking page
 
 If the user has their 'role' in the Supabase 'profiles' table and the auth.users section set to 'admin', they will have access to the below link in the **userDrawerProfile.tsx** file:
@@ -3979,7 +4326,7 @@ The 'admin' role in the system is implemented using a combination of a role colu
 
 ![alt text](image-47.png)
 
-```
+```sql
 -- Profiles table
 --
 -- This stores additional user information not included in auth.users.
@@ -4005,7 +4352,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 
 To securely determine whether a user is an administrator, a helper function called is_admin() is created. This function checks the profiles table to see if the user’s role is 'admin' and returns a boolean value. It uses SECURITY DEFINER, meaning it runs with the permissions of the function owner so it can access the table even when RLS is active.
 
-```
+```sql
 -------------------------------------------------------------------------
 -- ADMIN role Function
 -- This function checks whether a given user (uid) is an admin.
@@ -4028,7 +4375,7 @@ $$;
 
 This function is then used inside RLS policies to grant administrators elevated permissions. For example, the following policy allows administrators to read all user profiles, rather than only their own.
 
-```
+```sql
 -- ADMINS: SELECT ALL
 DROP POLICY IF EXISTS "Admins can select all profiles" ON public.profiles;
 CREATE POLICY "Admins can select all profiles"
@@ -4040,7 +4387,7 @@ USING (public.is_admin(auth.uid()));  -- Admin can read all rows
 
 Additional policies allow administrators to update or delete any profile, or read all users' reviews on the Room Details page:
 
-```
+```sql
 -- ADMINS: DELETE ANY
 DROP POLICY IF EXISTS "Admins can delete any profile" ON public.profiles;
 CREATE POLICY "Admins can delete any profile"
@@ -4071,7 +4418,7 @@ Because these policies use the 'is_admin()' function, only users whose profile r
 
 While the frontend **adminRoute.tsx** component allows admins to access the dashboard and manage rooms or bookings, the backend tables like bookings or rooms do not currently enforce RLS for admin actions, so these frontend checks are the main restriction to non-admin roles:
 
-```
+```ts
 
 import React, { useContext, type JSX } from "react";
 import { Navigate } from "react-router-dom";
@@ -5155,3 +5502,1468 @@ In short, the payment dialog collects the card details via Stripe, returns a pay
 - https://mui.com/material-ui/react-paper/
 - https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-x
 - https://mui.com/material-ui/react-snackbar/
+
+## Admin Users page
+
+This page shows all GuestEase users whose role is either 'guest' or 'admin'.
+
+![alt text](image-52.png)
+
+The file renders an admin page for managing users. The component stores multiple pieces of state that control modals, forms, filters, and notifications.
+
+It begins several 'useState' hooks. For example, the modal used to create or edit a user is controlled like this:
+
+```ts
+const AdminUsersPage: React.FC = () => {
+  const [openUserModal, setOpenUserModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+
+  // Controls whether the delete‑confirmation dialog is visible
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  // Holds the ID of the user the user intends to delete
+  // const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const [userToDelete, setUserToDelete] = useState<{
+    id: string;
+    role: string | null;
+  } | null>(null);
+
+  // React Query client used for cache invalidation after mutations
+  const queryClient = useQueryClient();
+  // Controls visibility of the success snackbar
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+
+  // Stores the text that will appear inside the Snackbar
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+
+  // We set a useState for the filters and leave the fields as empty
+  const [filters, setFilters] = useState({
+    search: "",
+    email: "",
+    first_name: "",
+    last_name: "",
+    country: "",
+    role: "",
+    created_at: "",
+  });
+
+  const [userForm, setUserForm] = useState({
+    first_name: "",
+    last_name: "",
+    country: "",
+    zip_code: "",
+    email: "",
+    role: "guest",
+  });
+
+```
+
+The form used in the modal is also stored in state.
+
+```ts
+const [userForm, setUserForm] = useState({
+  first_name: "",
+  last_name: "",
+  country: "",
+  zip_code: "",
+  email: "",
+  role: "guest",
+});
+```
+
+Whenever the admin types in the modal form, these values update.
+
+Next, the component fetches users using React Query
+
+```ts
+const {
+  data: profiles,
+  isLoading,
+  isError,
+  error,
+} = useQuery({
+  queryKey: ["users"],
+  queryFn: getUsers,
+});
+```
+
+'profiles' contains the user list returned by the API getUsers in the **guestease-api.ts**, while 'isLoading' and 'isError' indicate the request status.
+
+```ts
+/**
+ * Fetch all users from the Supabase "profles" table.
+ * It uses the Supabase client to query the "profiles" table.
+ * `.select("*")` retrieves every column for each profile.
+ *
+ * https://supabase.com/docs/reference/javascript/select
+ */
+export const getUsers = async () => {
+  const { data, error } = await supabase.from("profiles").select("*");
+
+  // If Supabase returns an error, we throw a descriptive exception
+  if (error) {
+    throw new Error(`Unable to fetch users: ${error.message}`);
+  }
+  return data;
+};
+```
+
+When the admin wants to create a user, the modal is opened and the form is cleared.
+
+```ts
+const handleOpenCreateUser = () => {
+  setEditingUser(null);
+  setUserForm({
+    first_name: "",
+    last_name: "",
+    email: "",
+    role: "",
+    country: "",
+    zip_code: "",
+  });
+  setOpenUserModal(true);
+};
+```
+
+Creating a user builds a new object from the form data and sends it to the backend.
+
+```ts
+const newUser = {
+  first_name: userForm.first_name,
+  last_name: userForm.last_name,
+  email: userForm.email,
+  role: userForm.role?.toLowerCase().trim(),
+  country: userForm.country,
+  zip_code: userForm.zip_code,
+};
+```
+
+The API call 'adminCreateUserApi()' in **admin-users-api.ts** is then executed.
+
+```ts
+await adminCreateUserApi(newUser);
+```
+
+```ts
+/**
+ * Create User (Admin)
+ * Sends a POST request to the admin backend to create a user.
+ */
+export const adminCreateUserApi = async (userForm: {
+  first_name: string;
+  last_name: string;
+  email: string;
+  role: string;
+  country: string;
+  zip_code: string;
+}) => {
+  const res = await fetch(`${backendUrl}/admin/create-user`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(userForm),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    // alert(data.error || "Failed to save user");
+    // We needed to throw an error to prevent the snackbar from popping up even
+    // when the user being created was using an existing email and would fail
+    throw new Error(data.error || "Failed to save user");
+    // return;
+  }
+
+  return data;
+};
+```
+
+The above API function calls the backend route **adminCreateUsers.js**. Let's now dive into how the backend works.
+
+The request body is destructured to extract the fields required to create a user.
+
+```js
+const { first_name, last_name, email, role, country, zip_code } = req.body;
+```
+
+These values are expected to be sent from the frontend when an admin submits the 'create user' form.
+
+The first validation step ensures all required fields exist.
+
+The route then retrieves all users from Supabase Authentication.
+
+```ts
+// Fetch all users from Supabase Auth
+// https://supabase.com/docs/reference/javascript/auth-admin-listusers
+const { data: list, error: authError } = await supabase.auth.admin.listUsers();
+```
+
+This call queries Supabase’s authentication system and returns all registered users.
+
+Next, the code checks if the email already exists.
+
+```ts
+// Find the user in the Auth list by matching email
+const user = list.users.find((u) => u.email === email);
+
+// If no user with this email exists in Auth, return an error
+// If a user with this email already exists, return a conflict error
+if (user) {
+  return res.status(409).json({ error: "User with this email already exists" });
+}
+```
+
+This searches through the Supabase user list for a matching email address.
+
+If a match is found, the request stops with a conflict error, otherwise, the user creation process then begins inside a try block.
+
+```ts
+ try {
+    // Generate a temporary password for the new user
+    const password = Math.random().toString(36).slice(-10);
+
+    /**
+     * Create Supabase Auth user (admin-level)
+     * This creates the authentication identity for the user.
+     * https://supabase.com/docs/reference/javascript/auth-admin-createuser
+     * */
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        role,
+        first_name,
+        last_name,
+        country,
+        zip_code,
+      },
+    });
+
+```
+
+A temporary password is generated using a random string. This password is only temporary because the user will later set their own password through a reset link.
+
+The user is then created in Supabase Authentication. This creates the authentication identity, and the user_metadata object stores additional user details associated with the account.
+
+We will later explain in a dedicated chapetr how the above information will get synchronized ith the 'profiles' table.
+
+After the account is created, the user object is extracted, and a Stripe customer is created for the user.
+
+```ts
+const authUser = data.user;
+/**
+ * Create Stripe Customer
+ * This returns a Stripe customer is which we store in the profile.
+ * */
+const stripeCustomerId = await createStripeCustomer(
+  authUser.email,
+  authUser.id,
+);
+```
+
+This utility function calls the Stripe API and returns a customer ID, which will be linked to the user profile.
+
+The system then stores user data in the profiles table.
+
+```ts
+/**
+ * Upsert into 'profiles' table
+ * Ensures the user column stripe_customer_id does have a value
+ * https://supabase.com/docs/reference/javascript/upsert
+ */
+const { error: profileError } = await supabase.from("profiles").upsert({
+  id: authUser.id,
+  email: authUser.email,
+  stripe_customer_id: stripeCustomerId,
+  role: role,
+});
+```
+
+'upsert' inserts the record if it does not exist, or updates it if it already does. This ensures the profile always contains a Stripe customer ID.
+
+Next, the backend generates a password recovery link.
+
+```ts
+// This Supabase function will generate a link to generate a tokenized link
+// baked into the 'Welcometo GuestEase' email that will be sent off.
+// Basically, it is a CTA link which will land the user on the
+// '/update-password/' page
+const { data: reset } = await supabase.auth.admin.generateLink({
+  type: "recovery",
+  email,
+  options: { redirectTo: `${frontendUrl}/update-password` },
+});
+
+// Fetching the tokenizedLink
+const tokenizedLink = reset.properties.action_link;
+```
+
+This creates a secure tokenized link that allows the user to set their password. After clicking it, they are redirected to the frontend /update-password page.
+
+The system then retrieves other data needed for the email taht will sent off to the new user
+
+```ts
+// Fetching the GuestEase logo from the Supabase storage
+const logoUrl = getPublicUrl("assets", "GuestEaseLogo.png");
+
+// Generate the full HTML for the booking confirmation email using the template
+// and pass the below values
+const html = userCreatedTemplate({
+  authUser,
+  logoUrl,
+  tokenizedLink,
+});
+
+// Send confirmation email to the user that their account has been created
+await fetch(`${backendUrl}/send_email`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    email: authUser.email,
+    subject: `Welcome to GuestEase ${authUser.user_metadata.first_name} 🎉`,
+    body: html,
+  }),
+});
+```
+
+This function returns the full HTML markup for the welcome email, including the logo and password setup link.
+
+This sends the welcome email containing the password setup link to the user.
+
+If everything succeeds, the server returns a success response.
+
+```js
+// Success returns the user and temporary password
+return res.status(201).json({
+  success: true,
+  user: data.user,
+  tempPassword: password,
+});
+```
+
+![alt text](image-53.png)
+
+Going back to the **adminUsersPage.tsx**, after the user is created, React Query refreshes the cached data.
+
+```ts
+   await adminCreateUserApi(newUser);
+      // This clears out the cache and allow us to see the created user without having to refresh the page
+      // https://tanstack.com/query/v4/docs/framework/react/guides/query-invalidation
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      // Message to confirm the user has beeen created
+      setSnackbarMessage("User created successfully!");
+      setSnackbarOpen(true);
+      setOpenUserModal(false);
+    } catch (err: any) {
+      setSnackbarMessage(err.message || "Something went wrong");
+      setSnackbarOpen(true);
+    }
+  };
+```
+
+This triggers a refetch so the new user appears in the table immediately.
+
+Updating a user works similarly but pre-fills the form with the selected user’s data.
+
+```ts
+// This time the form is filled as we are updating an existing user
+const handleOpenUpdateUser = (u: User) => {
+  setEditingUser(u);
+  setUserForm({
+    first_name: u.first_name ?? "",
+    last_name: u.last_name ?? "",
+    email: u.email ?? "",
+    role: u.role?.toLowerCase().trim() || "guest",
+    country: u.country ?? "",
+    zip_code: u.zip_code ?? "",
+  });
+  setOpenUserModal(true);
+};
+```
+
+The below function then will update the user by opening the modal and leveraging the API call 'adminUpdateUserApi()' in \*\*admin-users-api
+
+```ts
+const handleUpdateUser = async () => {
+  try {
+    const updatedUser = {
+      first_name: userForm.first_name,
+      last_name: userForm.last_name,
+      email: userForm.email,
+      role: userForm.role?.toLowerCase().trim(),
+      country: userForm.country,
+      zip_code: userForm.zip_code,
+    };
+    await adminUpdateUserApi(updatedUser);
+    // This clears out the cache and allow us to see the updated user without having to refresh the page
+    // https://tanstack.com/query/v4/docs/framework/react/guides/query-invalidation
+    queryClient.invalidateQueries({ queryKey: ["users"] });
+    // Message to confirm the user has been updated
+    setSnackbarMessage("User updated successfully!");
+    setSnackbarOpen(true);
+    setOpenUserModal(false);
+  } catch (err: any) {
+    setSnackbarOpen(err.message || "Something went wrong");
+    setOpenUserModal(false);
+  }
+};
+```
+
+We can take a look athe API call below
+
+```ts
+/**
+ * Update User (Admin)
+ */
+export const adminUpdateUserApi = async (userForm: {
+  first_name: string;
+  last_name: string;
+  email: string;
+  role: string;
+  country: string;
+  zip_code: string;
+}) => {
+  const res = await fetch(`${backendUrl}/admin/update-user`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(userForm),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to update user");
+  }
+
+  return data;
+};
+```
+
+It receives the user object to be updated and POST a request to the backend **adminUpdateUsers.js**.
+
+We will now focus on this file.
+
+When the frontend calls this route, the backend receives the updated user data in the request body, and the email is used as the unique identifier to find the correct user.
+If no email is provided, the request stops immediately.
+
+```js
+
+// ADMIN Update user
+router.post("/admin/update-user", async (req, res) => {
+  try {
+    // Extract all fields sent from the frontend
+    const updates = req.body;
+    // We use email as the unique identifier for updating users
+    const email = updates.email;
+
+    // If no email is provided, we cannot identify the user
+    if (!email) {
+      return res.status(400).json({ error: "Missing email" });
+    }
+
+
+```
+
+The server then fetches all users from Supabase Authentication.
+
+```js
+// Fetch all users from Supabase Auth
+// https://supabase.com/docs/reference/javascript/auth-admin-listusers
+const { data: list, error: authError } = await supabase.auth.admin.listUsers();
+
+// If Supabase Auth fails, return an error
+if (authError) {
+  return res.status(404).json({ error: "Auth user not found" });
+}
+```
+
+Next, the code searches the authentication list for a user with the matching email.
+
+If no user is found, the request stops.
+
+```js
+// Find the user in the Auth list by matching email
+const user = list.users.find((u) => u.email === email);
+
+// If no user with this email exists in Auth, return an error
+if (!user) {
+  return res.status(404).json({ error: "Auth user not found" });
+}
+```
+
+Once the user is found, their Supabase Auth ID is extracted, and the user’s metadata in Supabase Auth is then updated.
+
+```js
+// Extract the Supabase Auth user ID
+const authUserId = user.id;
+
+// Update the user's metadata in Supabase Auth
+// https://supabase.com/docs/reference/javascript/auth-admin-updateuserbyid
+const { error: authUpdateError } = await supabase.auth.admin.updateUserById(
+  authUserId,
+  {
+    user_metadata: {
+      first_name: updates.first_name,
+      last_name: updates.last_name,
+      role: updates.role,
+      country: updates.country,
+      zip_code: updates.zip_code,
+    },
+  },
+);
+```
+
+The role is also updated in the profiles table to ensure that it is in sync with auth.users:
+
+```js
+// Update role in the public.profiles table
+const { error: profileError } = await supabase
+  .from("profiles")
+  .update({ role: updates.role })
+  .eq("email", updates.email);
+
+if (profileError) {
+  return res.status(400).json({ error: profileError.message });
+}
+
+// Everything succeeded — return the updated user
+return res.json({
+  message: "User updated successfully",
+  // data,
+});
+```
+
+Once the user is updated, the query will be invalidate to get the cache cleared out and show the updated user data immediately on the dashboard.
+
+Deleting a user starts by opening the confirmation dialog.
+
+```ts
+// This handles the delete confirmation modal
+const handleOpenDeleteUser = (id: string, role: string | null) => {
+  setUserToDelete({ id, role });
+  setDeleteDialogOpen(true);
+};
+```
+
+Then, the below function will handle the delete user flow
+
+```ts
+// This handles the delete user logic
+const handleDeleteUser = async (id: string, role: string | null) => {
+  // if no user to delete, stop
+  if (!userToDelete) return;
+  try {
+    await adminDeleteUserApi(id, role);
+    // This clears out the cache and allows us to remove instantly the user on the UI
+    // https://tanstack.com/query/v4/docs/framework/react/guides/query-invalidation
+    queryClient.invalidateQueries({ queryKey: ["users"] });
+    // Message to confirm the user has beeen deleted
+    setSnackbarMessage("User deleted successfully!");
+    setSnackbarOpen(true);
+    setOpenUserModal(false);
+  } catch (err: any) {
+    setSnackbarMessage(err.message || "Something went wrong");
+    setSnackbarOpen(true);
+  } finally {
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch#syntax
+    setDeleteDialogOpen(false);
+    setUserToDelete(null);
+  }
+};
+```
+
+leveraging the 'adminDeleteUserApi()' function in **admin-users-api.ts**
+
+```ts
+/**
+ * Delete User (Admin)
+ */
+export const adminDeleteUserApi = async (id: string, role: string | null) => {
+  const res = await fetch(`${backendUrl}/admin/delete-user`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId: id }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to delete user");
+  }
+
+  return data;
+};
+```
+
+The backend route **adminDeleteUsers.js** is a pretty straightforward file
+
+```js
+import express from "express";
+import { supabase } from "../supabaseClientBackend.js";
+
+/**
+ * express.Router is a way to organize related routes together. This will allow us to apply
+ * middleware for different parts of our app.
+ *
+ * https://www.geeksforgeeks.org/web-tech/express-js-express-router-function/
+ */
+const router = express.Router();
+
+// ADMIN Delete user
+router.post("/admin/delete-user", async (req, res) => {
+  // Retrieving the user id from the body
+  const { userId, role } = req.body;
+
+  /**
+   * To be able to show a message stating that the user cannot be deleted
+   * as long as they have upcoming bookings, we first check if they have any by
+   * fetching them from Supabase
+   */
+  const { data: bookings, error: bookingsError } = await supabase
+    .from("bookings")
+    .select("id, check_out")
+    .eq("user_id", userId);
+  if (bookingsError) {
+    return res.status(500).json({ error: "Error checking user bookings." });
+  }
+
+  const today = new Date();
+
+  /**
+   * We create an array of bookings which are upcoming ones
+   * The check_out date must be bigger than today's date
+   */
+  const upcomingBookings = (bookings ?? []).filter((b) => {
+    const checkout = new Date(b.check_out);
+    return checkout >= today;
+  });
+
+  // If there upcoming bookings, we will show the below error message for a better UI experience
+  if (upcomingBookings.length > 0) {
+    return res.status(400).json({
+      error: "User cannot be deleted because they still have active bookings.",
+    });
+  }
+
+  /**
+   * Delete the user from Supabase Auth
+   * This removes the authentication identity (email/password, login access).
+   * If this fails, we stop immediately and return an error.
+   * https://supabase.com/docs/reference/javascript/auth-admin-deleteuser
+   * */
+  const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+
+  if (authError) return res.status(400).json({ error: authError.message });
+
+  // Otherwise, return a success response to the client.
+  res.json({ success: true });
+});
+
+export default router;
+```
+
+In a nutshell, we first need to check that the user does not have any upcoming boookings (active) and we do that by iterating through the bookings, creating a check_out date with the Date() constructor and then comparing them with today's date.
+
+Once confirmed, the API call deletes the user and the query cache is invalidated again in the parent file so the UI updates.
+
+Every row shows the user’s information and includes Update and Delete buttons.
+
+```ts
+<Button onClick={() => handleOpenUpdateUser(u)}>Update</Button>
+<Button onClick={() => handleOpenDeleteUser(u.id, u.role)}>Delete</Button>
+```
+
+At the bottom, the component renders the modal used for creating or editing users, a snackbar for feedback messages, and the alert dialog slide for the user deletion.
+
+```ts
+<AdminUserModal
+          open={openUserModal}
+          onClose={() => setOpenUserModal(false)}
+          // If editing the user than handle update user, otherwise create it
+          onSave={editingUser ? handleUpdateUser : handleCreateUser}
+          countries={countries ?? []}
+          editingUser={editingUser}
+          userForm={userForm}
+          setUserForm={setUserForm}
+        />
+        {/* https://mui.com/material-ui/react-snackbar/ */}
+        <Snackbar
+          open={snackbarOpen}
+          autoHideDuration={3000}
+          onClose={() => setSnackbarOpen(false)}
+          message={snackbarMessage}
+        />
+        <AlertDialogSlide
+          open={deleteDialogOpen}
+          onClose={() => setDeleteDialogOpen(false)}
+          onConfirm={async () => {
+            // We state that these 2 values are not null via the non‑null assertion operator
+            // https://learntypescript.dev/07/l2-non-null-assertion-operator
+            handleDeleteUser(userToDelete!.id, userToDelete!.role);
+          }}
+        />
+```
+
+Overall, the component acts as a complete admin CRUD interface that fetches users, displays them in a table, allows filtering, and performs create, update, and delete operations while keeping the UI synchronized with the backend.
+
+### Source attributions
+
+- https://tanstack.com/query/latest/docs/framework/react/reference/useQuery
+- https://tanstack.com/query/latest/docs/framework/react/quick-start
+- https://tanstack.com/query/v4/docs/framework/react/guides/query-invalidation
+- https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch#syntax
+- https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-x
+- https://mui.com/material-ui/react-snackbar/
+- https://learntypescript.dev/07/l2-non-null-assertion-operator
+
+## Admin Rooms page
+
+![alt text](image-54.png)
+
+This page enables the admin to create, read, update, and delete rooms (CRUD).
+
+Rooms are fetched using React Query.
+
+```ts
+const {
+  data: rooms,
+  isLoading,
+  isError,
+  refetch,
+} = useQuery({
+  queryKey: ["rooms"],
+  queryFn: getRooms,
+});
+```
+
+The 'getRooms()' in **guestease-api.ts** runs and returns the list of rooms fetched straight from Supabase (no sensitive data is shown, therefore, the function can run client-side).
+
+```ts
+/**
+ * Fetch all rooms from the Supabase "rooms" table.
+ * It uses the Supabase client to query the "rooms" table.
+ * `.select("*")` retrieves every column for each room.
+ *
+ * https://supabase.com/docs/reference/javascript/select
+ */
+export const getRooms = async () => {
+  const { data, error } = await supabase.from("rooms").select("*");
+
+  // If Supabase returns an error, we throw a descriptive exception
+  if (error) {
+    throw new Error(`Unable to fetch rooms: ${error.message}`);
+  }
+  return data;
+};
+```
+
+The component stores UI state using `useState`.
+
+```tsx
+const [openRoomModal, setOpenRoomModal] = useState(false);
+```
+
+Controls whether the create/update modal is visible.
+
+```tsx
+const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+```
+
+Stores images chosen by the admin before uploading.
+
+```tsx
+const [editingRoom, setEditingRoom] = useState<Room | null>(null);
+```
+
+If this has a room value, the modal is in **update mode**.
+
+```tsx
+const [existingImages, setExistingImages] = useState<string[]>([]);
+```
+
+Keeps images already stored in the database.
+
+---
+
+Snackbar state shows success messages.
+
+```tsx
+const [snackbarOpen, setSnackbarOpen] = useState(false);
+const [snackbarMessage, setSnackbarMessage] = useState("");
+```
+
+Example:
+
+```tsx
+setSnackbarMessage("Room created successfully!");
+setSnackbarOpen(true);
+```
+
+---
+
+Delete dialog state tracks confirmation before deleting.
+
+```tsx
+const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+const [roomToDelete, setRoomToDelete] = useState<string | null>(null);
+```
+
+Example:
+
+```tsx
+setRoomToDelete(r.id);
+setDeleteDialogOpen(true);
+```
+
+Form data for creating or editing a room.
+
+```tsx
+const [roomForm, setRoomForm] = useState({
+  name: "",
+  description: "",
+  amenities: "",
+  capacity: "",
+  price: "",
+});
+```
+
+The room creation is handled by the below function Opening the **create modal** clears the form.
+where the form fields are empty as we open the modal (setEditingRoom mustbe null as we are creating and not updating).
+
+```tsx
+const handleOpenCreateRoom = () => {
+  setEditingRoom(null);
+  setRoomForm({
+    name: "",
+    description: "",
+    amenities: "",
+    capacity: "",
+    price: "",
+  });
+  setOpenRoomModal(true);
+};
+```
+
+At this point, we create the variable 'createRoom' which will leverage the 'useAdminCreateRoom()' hook in **useAdminCreateRoom.ts**.
+
+However, to use the below hook, we first need to create the roomPayload (normalized) through the handleSaveRoom function
+
+```ts
+/**
+   * Create Room handler which builds a room payload,
+   * then triggers the React Query mutation.
+   * https://tanstack.com/query/latest/docs/framework/react/reference/useMutation
+   * */
+  const handleSaveRoom = async () => {
+    try {
+      // Normalize and prepare data for Supabase
+      const roomPayload = {
+        name: roomForm.name.trim(),
+        // trim(): https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/trim
+        description: roomForm.description.trim(),
+        amenities: roomForm.amenities
+          .split(",")
+          // Amenities are an array of strings
+          .map((a) => a.trim())
+          // .filter(Boolean) removes empty or falsy values from the array after splitting.
+          // https://www.geeksforgeeks.org/javascript/how-to-remove-falsy-values-from-an-array-in-javascript/
+          .filter(Boolean),
+        capacity: Number(roomForm.capacity),
+        price: Number(roomForm.price),
+      };
+
+```
+
+We then send the 'roomPayload' to the useAdminCreateRoom() hook and 'mutate' it through the React Query mutation
+
+```ts
+// Create the room first
+const result = await createRoom.mutateAsync(roomPayload);
+```
+
+```ts
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "../supabase/supabaseClient";
+
+interface RoomPayload {
+  name: string;
+  description: string;
+  amenities: string[];
+  capacity: number;
+  price: number;
+}
+
+/**
+ * React Query’s useMutation creates the room, then invalidates the
+ * cached "rooms" query so fresh data is refetched.
+ * Local form state mirrors the room data, and useEffect keeps it synced
+ * whenever the room query returns new values from Supabase.
+ * https://tanstack.com/query/v4/docs/framework/react/guides/mutations
+ * https://tanstack.com/query/v4/docs/framework/react/guides/query-invalidation
+ */
+export function useAdminCreateRoom() {
+  const queryClient = useQueryClient();
+
+  // This will insert the room in the supabase 'rooms' table
+  return useMutation({
+    mutationFn: async (payload: RoomPayload) => {
+      const { data, error } = await supabase
+        .from("rooms")
+        .insert([payload])
+        .select("id")
+        .single();
+      if (error) throw error;
+      return data;
+    },
+
+    onSuccess: () => {
+      // Refresh rooms list
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+    },
+  });
+}
+```
+
+In it, we pass the RoomPayload, essentially created by the user when filleg the above-mentioned form. At that point, we use React Query's useMutation to insert the room into the Supabase 'rooms' table, and get the room list refreshed by invalidating the query.
+
+The database then returns the room object created and we fetch its id.
+
+```ts
+const roomId = result.id;
+```
+
+Next the code prepares to upload images through an array of file paths of uploaded images, which are uploaded only if the admin has selecetd them:
+
+```ts
+// Upload images
+      let uploadedImages: string[] = [];
+      if (selectedFiles.length > 0) {
+        uploadedImages = await uploadRoomImages(roomId, selectedFiles);
+      }
+/**
+ * Examples [
+  "rooms/a77ddc44/image1.jpg",
+  "rooms/a77ddc44/image2.jpg"
+
+  These are Supabase storage paths as per https://supabase.com/dashboard/project/xxxxxxxxxxxxxxxxxxxxx/storage/files/buckets/assets
+]
+
+Ex.
+selectedFiles = [
+  File("room1.jpg"),
+  File("room2.jpg")
+]
+```
+
+The 'uploadRoomImages()' helper is in the **util/uploadedImages.ts**:
+
+```ts
+import { supabase } from "../supabase/supabaseClient";
+
+/**
+ * This utility uploads an array of File objects to Supabase Storage.
+ * Each file is placed under: rooms/<roomId>/<timestamp>-<sanitizedName>
+ * https://supabase.com/docs/guides/storage
+ * https://developer.mozilla.org/en-US/docs/Web/API/File/name
+ */
+export const uploadRoomImages = async (roomId: string, files: File[]) => {
+  // This creates a List variable to which we will be pushing the uploaded images
+  const uploadedPaths: string[] = [];
+
+  // Sequential Reading Function
+  // https://kanhaji.medium.com/read-files-in-javascript-like-a-hero-you-are-with-async-await-16841814ea41
+  for (const file of files) {
+    // Replace unsafe characters in filenames to avoid storage path issues.
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions
+    const safeImageName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
+    /**
+     * Prefix with folder + timestamp to avoid collisions.
+     * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/now
+     * */
+    const filePath = `rooms/${roomId}/${Date.now()}-${safeImageName}`;
+
+    // Upload to Supabase Storage bucket named 'assets'.
+    // https://supabase.com/docs/reference/javascript/storage-from-upload
+    const { data, error } = await supabase.storage
+      .from("assets")
+      .upload(filePath, file);
+
+    if (!error && data) {
+      // We then 'push' the filePath to the uploadedPaths list
+      uploadedPaths.push(filePath);
+    }
+  }
+
+  return uploadedPaths;
+};
+```
+
+Finally, we save the image paths into Supabase (uploadedImages = uploadedPaths) and complete the room creation.
+
+```ts
+
+ // Save image paths into the room
+      if (uploadedImages.length > 0) {
+        const { error: imgError } = await supabase
+          .from("rooms")
+          .update({ images: uploadedImages })
+          .eq("id", roomId);
+
+        if (imgError) throw imgError;
+      }
+      setSnackbarMessage("Room created successfully!");
+      setSnackbarOpen(true);
+      // Refresh rooms list
+      // https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
+      refetch();
+      setOpenRoomModal(false);
+      setSelectedFiles([]);
+    } catch (err) {
+      console.error("Error saving room:", err);
+    }
+  };
+
+```
+
+![alt text](image-55.png)
+
+The update function allows the admin to modify an existing room and update its images. When the admin clicks 'Update', the selected room is stored in 'editingRoom'.
+
+![alt text](image-56.png)
+
+The 'handleOpenUpdateRoom' function prepares the update modal with the data of the selected room so the admin can edit it.
+
+First, the function receives a room object 'r and extracts its existing images. These are stored in state so the modal can display the current images and allow the admin to keep or remove them.
+
+```ts
+const imgs = r.images;
+setExistingImages(imgs);
+```
+
+Next, the selected room is stored in the 'editingRoom' state. This lets the application know that the modal is in 'edit mode' rather than create mode.
+
+```ts
+setEditingRoom(r);
+```
+
+The form fields are then pre-filled with the room’s current data so the admin can see and modify it. Some values are converted into formats suitable for form inputs. For example, the amenities array is converted into a comma-separated string, and numeric values are converted to strings.
+
+```ts
+setRoomForm({
+  name: r.name,
+  description: r.description ?? "",
+  amenities: (r.amenities ?? []).join(", "),
+  capacity: String(r.capacity ?? ""),
+  price: String(r.price ?? ""),
+});
+```
+
+The selected files state is cleared to ensure that previously uploaded files are not reused unintentionally. Finally, the modal is opened so the admin can edit the room details.
+
+```ts
+setSelectedFiles([]);
+setOpenRoomModal(true);
+```
+
+The 'handleUpdateRoom' function first checks that a room is currently being edited before continuing.
+
+```ts
+if (!editingRoom) return;
+```
+
+If the admin selects new images, they are uploaded to Supabase Storage using the 'uploadRoomImages()' utility in **utils/uploadRoomImages.ts**. The returned paths are stored in 'newUploadedImages' list variable.
+
+```ts
+// We create a variable string for new uploaded images
+let newUploadedImages: string[] = [];
+// If any image file is selected...
+if (selectedFiles.length > 0) {
+  // ... then we upload via the uploadRoomImages, which will push them to the newUploadedImages list
+  newUploadedImages = await uploadRoomImages(editingRoom.id, selectedFiles);
+}
+```
+
+Next, the system merges the existing images with the newly uploaded ones using the spread operator. This ensures previously stored images are preserved when new ones are added.
+
+```ts
+// We finally create an overarching finalImages list encompassing the below lists through the spread operator
+const finalImages = [...existingImages, ...newUploadedImages];
+```
+
+The room data is then updated using a React Query mutation. This sends the updated fields and the full image list to the database.
+
+```ts
+.....
+const updateRoom = useAdminUpdateRoom();
+
+......
+
+// Update room details with images included now
+await updateRoom.mutateAsync({
+  id: editingRoom.id,
+  name: roomForm.name,
+  description: roomForm.description,
+  amenities: roomForm.amenities
+    .split(",")
+    // Amenities are an array of strings
+    .map((a) => a.trim())
+    // .filter(Boolean) removes empty or falsy values from the array after splitting.
+    // https://www.geeksforgeeks.org/javascript/how-to-remove-falsy-values-from-an-array-in-javascript/
+    .filter(Boolean),
+  capacity: Number(roomForm.capacity),
+  price: Number(roomForm.price),
+  images: finalImages,
+});
+```
+
+The useAdminUpdateRoom() hook can be observed in **hooks/useAdminUpdateRoom.ts**
+
+```ts
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "../supabase/supabaseClient";
+
+interface RoomPayload {
+  id: string;
+  name: string;
+  description: string;
+  amenities: string[];
+  capacity: number;
+  price: number;
+  images: string[];
+}
+
+/**
+ * React Query’s useMutation updates the room,  then invalidates the
+ * cached "rooms" query so fresh data is refetched.
+ * Local form state mirrors the room data, and useEffect keeps it synced
+ * whenever the room query returns new values from Supabase.
+ * https://tanstack.com/query/v4/docs/framework/react/guides/mutations
+ * https://tanstack.com/query/v4/docs/framework/react/guides/query-invalidation
+ */
+export function useAdminUpdateRoom() {
+  const queryClient = useQueryClient();
+
+  // This will insert the room in the supabase 'rooms' table
+  return useMutation({
+    mutationFn: async (payload: RoomPayload) => {
+      const { id, ...restOfRoomData } = payload;
+      const { data, error } = await supabase
+        .from("rooms")
+        .update(restOfRoomData)
+        .eq("id", id)
+        .select("id")
+        .single();
+      if (error) throw error;
+      return data;
+    },
+
+    // As we now have 2 args, we need to add a dummy one
+    // for the second query invalidation (_)
+    onSuccess: (_, payload) => {
+      // Refresh rooms list
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+      queryClient.invalidateQueries({ queryKey: ["rooms", payload.id] });
+    },
+  });
+}
+```
+
+To be noticed that we are invalidating 2 different queries serve:
+
+- ["rooms"] refreshes the rooms list used in the admin dashboard.
+- ["rooms", payload.id] refreshes the single-room query used in room detail views.
+
+After the update is successful, the UI is refreshed so the updated data appears immediately in the table.
+
+```ts
+// Refresh rooms list
+// https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
+refetch();
+```
+
+In summary, the update function uploads any new images, merges them with the existing ones, updates the room record through a React Query mutation, and then refreshes the rooms list so the changes appear in the admin dashboard.
+
+![alt text](image-57.png)
+
+The delete follows a 'confirmation-first pattern' as in the rest of the delete flows across the pages. Instead of immediately deleting a room when the user clicks the delete button, the UI first stores the selected room ID and opens a confirmation dialog.
+
+```ts
+// Holds the ID of the room the user intends to delete
+const [roomToDelete, setRoomToDelete] = useState<string | null>(null);
+```
+
+Only after the admin confirms the action does the actual deletion mutation run.
+
+When the rooms are rendered in the table, each row includes a 'Delete button'.
+
+Clicking this button does not delete the room directly. Instead, it sets two pieces of state: the ID of the room that should potentially be deleted and a boolean that opens the confirmation dialog.
+
+```tsx
+<Button
+  variant="outlined"
+  color="error"
+  onClick={() => {
+    setRoomToDelete(r.id);
+    setDeleteDialogOpen(true);
+  }}
+>
+  Delete
+</Button>
+```
+
+Here, 'setRoomToDelete(r.id)' stores the selected room’s ID in state, while 'setDeleteDialogOpen(true)' opens the confirmation modal. This ensures the application knows which room is targeted before the admin confirms the action.
+
+The confirmation dialog itself is rendered through the 'AlertDialogSlide' component. It receives three props: the open state, a close handler, and a confirm handler. The confirm handler calls the delete function with the stored room ID.
+
+```tsx
+<AlertDialogSlide
+  open={deleteDialogOpen}
+  onClose={() => setDeleteDialogOpen(false)}
+  onConfirm={() => handleDeleteRoom(roomToDelete ?? "")}
+/>
+```
+
+Once the admin confirms the deletion in the dialog, the 'handleDeleteRoom' function is executed. This function triggers a React Query mutation using the custom 'useAdminDeleteRoom()' hook in **useAdminDeleteRoom.ts**.
+
+```ts
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "../supabase/supabaseClient";
+
+interface RoomToDelete {
+  id: string;
+}
+
+/**
+ * React Query’s useMutation updates the room,  then invalidates the
+ * cached "rooms" query so fresh data is refetched.
+ * Local form state mirrors the room data, and useEffect keeps it synced
+ * whenever the room query returns new values from Supabase.
+ * https://tanstack.com/query/v4/docs/framework/react/guides/mutations
+ * https://tanstack.com/query/v4/docs/framework/react/guides/query-invalidation
+ */
+export function useAdminDeleteRoom() {
+  const queryClient = useQueryClient();
+
+  // This will insert the room in the supabase 'rooms' table
+  return useMutation({
+    mutationFn: async (room: RoomToDelete) => {
+      // const { id, ...restOfRoomData } = payload;
+      const { data, error } = await supabase
+        .from("rooms")
+        .delete()
+        .eq("id", room.id);
+      if (error) throw error;
+      return data;
+    },
+
+    onSuccess: () => {
+      // Refresh rooms list
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+    },
+  });
+}
+```
+
+The function first guards against accidental execution by checking whether 'roomToDelete' exists. It then calls 'deleteRoom.mutateAsync({ id })', which sends the deletion request to the hook where the deletion occurs straight into the Supabase 'rooms' table:
+
+```tsx
+const deleteRoom = useAdminDeleteRoom();
+
+const handleDeleteRoom = async (id: string) => {
+  if (!roomToDelete) return;
+
+  await deleteRoom.mutateAsync({ id });
+  setSnackbarMessage("Room deleted successfully!");
+  setSnackbarOpen(true);
+  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch#syntax
+  setDeleteDialogOpen(false);
+  setRoomToDelete(null);
+  // Refresh rooms list
+  // https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
+  refetch();
+};
+```
+
+After the mutation succeeds, the UI updates to reflect the change.
+
+A snackbar message is shown to notify the admin that the room was deleted, the dialog is closed, and the stored room ID is cleared. Finally, 'refetch()' is called to reload the rooms list using React Query so the deleted room disappears from the table.
+
+Finally, a close look is worth taking at the image path whose explanation can be checked in the below comment:
+
+```ts
+
+ {images.map((img: any) => {
+                          // This reflects the image path we have in supabase storage
+                          // const fullPath = `rooms/${r.id}/${img}`;
+                          const fullPath = img;
+                          // console.log("IMG VALUE:", img);
+
+                          return (
+                            <img
+                              key={fullPath}
+                              src={
+                                /**
+                                 * The uploaded image path is like 'rooms/a77ddc44-0a5e-4585-b4e7-5b61cb2865d3/1770573915402-DruidsRest2.jpg',
+                                 * as per 'const filePath = `rooms/${roomId}/${Date.now()}-${safeName}`;' in the adminRoomsPage.tsx file.
+                                 * Hence, we are saying below, that if 'img' does include 'rooms/' in its path, that mean it has been uploaded by
+                                 * the admin and will show the uploaded path. Otherwise, it will enable the old image path display, whose
+                                 * image was originally manually uploaded straight into supabase
+                                 */
+                                img.includes("rooms/")
+                                  ? getPublicUrl(fullPath) // New uploaded images path
+                                  : getPublicUrl(`rooms/${r.id}/${img}`) // old seeded images
+                              }
+                              alt={r.name}
+                              style={{
+                                width: 60,
+                                height: 60,
+                                objectFit: "cover",
+                                borderRadius: 4,
+                                border: "1px solid #ccc",
+                                flexShrink: 0,
+                              }}
+                            />
+                          );
+                        })}
+
+```
+
+Overall, the flow works like this: clicking delete sets the target room and opens a confirmation dialog, confirming triggers a mutation that deletes the room from the database, and the UI refreshes to show the updated data while displaying a success notification. This pattern prevents accidental deletions and keeps the interface synchronized with the backend state.
+
+### Source attributions
+
+- https://tanstack.com/query/latest/docs/framework/react/reference/useQuery
+- https://tanstack.com/query/latest/docs/framework/react/quick-start
+- https://tanstack.com/query/latest/docs/framework/react/reference/useMutation
+- https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
+- https://developer.mozilla.org/en-US/docs/Web/API/File
+- https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/trim
+- https://www.geeksforgeeks.org/javascript/how-to-remove-falsy-values-from-an-array-in-javascript/
+- https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch
+- https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-x
+- https://mui.com/material-ui/react-snackbar/
+
+## Admin Reviews Page
+
+![alt text](image-58.png)
+
+This page defines an admin dashboard that displays guest reviews.
+
+First and foremost, it fetches data by using React Query by leveraging the 'useAdminFetchingReviews()' and the 'useAdminFetchingRooms()' hooks:
+
+```ts
+const { data: reviews, isLoading, error } = useAdminFetchingReviews();
+const { data: rooms } = useAdminFetchingRooms();
+```
+
+**hooks/useAdminFetchingReviews.ts**
+
+```ts
+import { useQuery } from "@tanstack/react-query";
+import { getReviews } from "../api/guestease-api";
+
+export const useAdminFetchingReviews = () => {
+  return useQuery({
+    queryKey: ["reviews"],
+    queryFn: () => getReviews(),
+  });
+};
+```
+
+**hooks/useAdminFetchingRooms.ts**
+
+```ts
+import { useQuery } from "@tanstack/react-query";
+import { getRooms } from "../api/guestease-api";
+
+export const useAdminFetchingRooms = () => {
+  return useQuery({
+    queryKey: ["rooms"],
+    queryFn: () => getRooms(),
+  });
+};
+```
+
+which they, in turn, call in the API functions 'getReviews()' and 'getRooms()' in the **api/guestease-api.ts**
+
+```ts
+
+/**
+ * Fetch all reviews from the Supabase "reviews" table.
+ * It uses the Supabase client to query the "reviews" table.
+ * `.select("*")` retrieves every column for each profile.
+ *
+ * https://supabase.com/docs/reference/javascript/select
+ */
+export const getReviews = async () => {
+  const { data, error } = await supabase.from("reviews").select("*");
+
+  // If Supabase returns an error, we throw a descriptive exception
+  if (error) {
+    throw new Error(`Unable to fetch reviews: ${error.message}`);
+  }
+  return data;
+};
+
+...
+
+/**
+ * Fetch all rooms from the Supabase "rooms" table.
+ * It uses the Supabase client to query the "rooms" table.
+ * `.select("*")` retrieves every column for each room.
+ *
+ * https://supabase.com/docs/reference/javascript/select
+ */
+export const getRooms = async () => {
+  const { data, error } = await supabase.from("rooms").select("*");
+
+  // If Supabase returns an error, we throw a descriptive exception
+  if (error) {
+    throw new Error(`Unable to fetch rooms: ${error.message}`);
+  }
+  return data;
+};
+
+
+```
+
+Each row displays the review information such as the review ID, booking ID, rating, and comment.
+
+```ts
+<TableCell>{r.id}</TableCell>
+<TableCell>{r.booking_id}</TableCell>
+<TableCell>{r.rating}</TableCell>
+<TableCell>{r.comment}</TableCell>
+```
+
+The room name is rendered as a clickable link that navigates to the room page using React Router.
+
+```ts
+<Box component={Link} to={`/room/${r.room_id}`}>
+  {getRoomName(r.room_id, rooms)}
+</Box>
+```
+
+The helper function 'getRoomName' in **utils/getRoomNames.ts** converts the room ID from the review into a readable room name using the rooms data.
+
+```ts
+/**
+ * Safely returns the room name for a given roomId.
+ * If the room is not found, returns a readable fallback.
+ */
+export const getRoomName = (
+  roomId: string,
+  rooms: { id: string; name: string }[] | undefined,
+): string => {
+  return (
+    rooms?.find((r) => r.id === roomId)?.name || `Unknown room (${roomId})`
+  );
+};
+```
+
+Overall, the component separates concerns effectively: data fetching is handled by custom hooks using TanStack Query, filtering logic is encapsulated in another hook, and the component itself focuses on rendering the user interface using Material UI components.
+
+### Source attributions
+
+- https://tanstack.com/query/latest/docs/framework/react/reference/useQuery
+- https://tanstack.com/query/latest/docs/framework/react/quick-start
+- https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-x

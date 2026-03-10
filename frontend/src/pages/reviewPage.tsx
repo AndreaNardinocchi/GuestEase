@@ -13,7 +13,7 @@ import {
   Alert,
   Snackbar,
 } from "@mui/material";
-import { useUserFetchRoom } from "../hooks/useUserFetchingRoom";
+import { useUserFetchRoom } from "../hooks/useUserFetchingRooms";
 import { useUserFetchBooking } from "../hooks/useUserFetchingBooking";
 import { useUserProfile } from "../hooks/useFetchingUserProfile";
 import { useNavigate, useParams } from "react-router-dom";
