@@ -712,7 +712,6 @@ export interface ReviewFilterCardProps {
  * React state setter for updating the selected amenities.
  * https://react.dev/learn/state-as-a-snapshot
  */
-
 export interface AmenitiesFilterProps {
   allAmenities: string[];
   selectedAmenities: string[];

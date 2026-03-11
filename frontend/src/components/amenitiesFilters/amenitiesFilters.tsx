@@ -21,7 +21,8 @@ const AmenitiesFilter: React.FC<AmenitiesFilterProps> = ({
         return newList;
       }
 
-      // Add amenity to the previous list if isSelected is false
+      // Add amenity to the previous list if isSelected is false, which means
+      // that the amenity was not selected in the first but gets selected now
       const newList = [...previousList, amenity];
       return newList;
     });

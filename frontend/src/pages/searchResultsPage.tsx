@@ -10,7 +10,7 @@ import {
 // https://mui.com/material-ui/material-icons/
 import HotelIcon from "@mui/icons-material/Hotel";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import RoomHorizontalCard from "../components/roomHorizontalCard/roomHorizontalCard";
 // Importing the custom react hook
 import { useAvailableRooms } from "../hooks/useAvailableRooms";
@@ -58,9 +58,7 @@ const SearchResultsPage: React.FC = () => {
   } = useAvailableRooms(checkIn, checkOut, guests);
 
   // State to store selected amenities from the filter component
-  const [selectedAmenities, setSelectedAmenities] = React.useState<string[]>(
-    [],
-  );
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
 
   /**
    * Filter rooms based on selected amenities.
@@ -145,12 +143,13 @@ const SearchResultsPage: React.FC = () => {
         <Box
           sx={{ display: "grid", gridTemplateColumns: "1fr", rowGap: 4, mt: 3 }}
         >
-          {/* * Here we are creating an array to show a number of room cards with dummy data. 
-          We established a length of 8 cards, which we then 'map'. 
-          This will be replaced byt real data from supabase. 
-          If rooms is null or undefined, use [] instead is needed to prevent any crash. 
-          https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/from 
-          */}
+          {/**
+           * Here we are creating an array to show a number of room cards with dummy data.
+           * We established a length of 8 cards, which we then 'map'.
+           * This will be replaced byt real data from supabase.
+           * If rooms is null or undefined, use [] instead is needed to prevent any crash.
+           * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/from
+           */}
           {(filteredRooms ?? []).map((room: Room) => (
             <RoomHorizontalCard
               /**

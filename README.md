@@ -1547,6 +1547,409 @@ The page also incorporates the **editSearchRoomsForm.tsx** component which is ba
 - https://stackoverflow.com/questions/59161825/react-material-ui-list-should-have-a-unique-key-prop
 - https://www.w3schools.com/python/ref_string_split.asp
 
+## Search Results page Filters
+
+The filter flow in the Search Results page starts with reading the search parameters from the URL. When the user performs a search, the application navigates to the results page with query parameters such as 'checkIn', 'checkOut', and 'guests.
+
+These parameters are extracted using 'useLocation() together with 'URLSearchParams'.
+
+```ts
+const location = useLocation();
+const params = new URLSearchParams(location.search);
+
+const checkIn = params.get("checkIn") || "";
+const checkOut = params.get("checkOut") || "";
+const guests = Number(params.get("guests")) || 1;
+```
+
+At this point the page knows the search criteria that the user selected. These values are then passed to a custom React Query hook responsible for retrieving the rooms that are available for those dates and guest capacity.
+
+```ts
+const {
+  data: rooms,
+  isLoading,
+  error,
+} = useAvailableRooms(checkIn, checkOut, guests);
+```
+
+The 'useAvailableRooms' hook in **hooks/useAvailableRooms.ts** queries the backend Supabase via **supabase/availableRooms.ts**.
+
+```ts
+import { supabase } from "./supabaseClient";
+
+/**
+ * 'searchAvailableRooms' calls the Supabase Postgres function 'get_available_rooms'
+ * (created in https://supabase.com/dashboard/project/xxxxxxxxxxxxxxx/sql/xxxxxxxxx?schema=public )
+ * via RPC and returns a normalized result object.
+ * It is basically a plain async service function which calls Supabase RPC and returns
+ * { success, rooms, message }.
+ * It does not manage loading, caching, or refetching and it is meant to be used inside
+ * a context or inside React Query.
+ */
+export const searchAvailableRooms = async (
+  checkIn: string,
+  checkOut: string,
+  guests: number,
+  // Added to exclude the current booking id when user is updating their booking dates
+  // It must be called out as possibly undefined as searchAvailableRooms is also used
+  // for generic search when the user is not logged in
+  excludeBookingId?: number,
+) => {
+  try {
+    /**
+     * Call the Supabase Postgres function 'get_available_rooms'
+     * using the rpc() helper.
+     * The first argument is the name of the PostrgreSQL function, whereas
+     * the second argument is made of parameters object, keys must match SQL function args
+     * https://supabase.com/docs/reference/javascript/rpc
+     */
+    const { data, error } = await supabase.rpc("get_available_rooms", {
+      check_in: checkIn,
+      check_out: checkOut,
+      guests: guests,
+      // Added to exclude the current booking id when user is updating their booking dates
+      exclude_booking_id: excludeBookingId,
+    });
+
+    // If Supabase returned an error, throw it so it is caught by the catch block
+    if (error) throw error;
+
+    console.log("[searchAvailableRooms] RPC returned:", data);
+
+    /**
+     * On success: true and rooms: data returned from the RPC (array of rooms or similar)
+     */
+    return { success: true, rooms: data };
+  } catch (err: any) {
+    /**
+     * console.error is standard here:
+     * https://developer.mozilla.org/en-US/docs/Web/API/console/error
+     */
+    console.error("Error fetching rooms:", err);
+
+    /**
+     * Normalize the error result:
+     * success: false
+     * rooms: empty array (caller can rely on rooms always being an array)
+     * message: human-readable error message for the UI
+     */
+    return { success: false, rooms: [], message: err.message };
+  }
+};
+```
+
+The following Supabase function will be ultimately responsible for displaying the available rooms based on the argument/parameters entried by the guest:
+
+```sql
+-- ============================================================
+-- 1. Enable required extension for exclusion constraints
+-- btree_gist teaches PostgreSQL how to compare normal values inside a GiST index.
+-- GiST is the toolbox that lets PostgreSQL index almost anything — including ranges,
+-- geometric shapes, text search, and custom data types
+-- https://dev.to/jhonoryza/sql-index-types-b-tree-hash-gist-gist-brin-and-gin-44g0
+-- https://www.postgresql.org/docs/current/btree-gist.html
+-- https://neon.com/blog/btree_gist
+-- https://www.postgresql.org/docs/current/sql-createextension.html
+-- ============================================================
+
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+-- ============================================================
+-- 2. Add exclusion constraint to prevent overlapping bookings
+-- ============================================================
+-- This ensures that a room cannot have two bookings whose date ranges overlap.
+-- Even if two inserts happen at the same time, PostgreSQL will reject the second one.
+-- https://stackoverflow.com/questions/61501301/partial-constraint-exclude-using-gist#61503531
+-- https://www.postgresql.org/docs/current/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
+
+ALTER TABLE bookings
+DROP CONSTRAINT IF EXISTS no_overlapping_bookings;
+
+ALTER TABLE bookings
+ADD CONSTRAINT no_overlapping_bookings
+EXCLUDE USING gist (
+  room_id WITH =,
+  period WITH &&
+);
+
+-- ============================================================
+-- 3. Create or replace the availability function
+-- ============================================================
+
+-- Drop the old version first so we can remove the default argument
+DROP FUNCTION IF EXISTS public.get_available_rooms(date, date, integer, uuid);
+
+CREATE OR REPLACE FUNCTION public.get_available_rooms(
+  check_in date,
+  check_out date,
+  guests int,
+  -- This is added to exclude the current booking id when user is updating their booking dates
+  exclude_booking_id uuid
+)
+RETURNS TABLE (
+  id uuid,
+  name text,
+  description text,
+  capacity int,
+  price numeric,
+  amenities jsonb,
+  images jsonb,
+  created_at timestamptz
+)
+
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+-- This function is executed with SECURITY DEFINER,
+-- meaning it runs with the privileges of the function owner rather than the caller.
+-- This pattern is recommended for RPC functions that need controlled access
+-- to tables protected by Row Level Security (RLS).
+-- https://supabase.com/docs/guides/database/functions
+
+SELECT
+  r.id,
+  r.name,
+  r.description,
+  r.capacity,
+  r.price,
+  r.amenities,
+  r.images,
+  r.created_at
+FROM public.rooms AS r
+WHERE
+  -- Ensure room can accommodate the requested number of guests
+  r.capacity >= guests
+  -- Exclude rooms that overlap with an existing booking
+  -- The "&&" operator checks whether two ranges overlap.
+  -- PostgreSQL docs: Table 9.58 (range operators) https://www.postgresql.org/docs/current/functions-range.html
+  AND NOT EXISTS (
+    SELECT 1
+    FROM public.bookings AS b
+    WHERE b.room_id::uuid = r.id
+    AND (exclude_booking_id IS NULL OR b.id != exclude_booking_id)
+
+      -- Compare the booking's stored daterange (b.period)
+      -- with the requested range created by daterange($1, $2, '[)')
+      --
+      -- '[)' means:
+      --   inclusive lower bound (check_in)
+      --   exclusive upper bound (check_out) so that when a check out exists a check in can exists too for the same date
+      AND b.period && daterange($1, $2, '[)')
+  );
+
+$$;
+
+```
+
+and returns a list of rooms that are not booked for the selected date range and that can accommodate the number of guests requested. The returned data becomes the base dataset used by the page.
+
+Once the available rooms are loaded, the page introduces a second filtering layer based on amenities. A piece of local React state keeps track of the amenities selected by the user.
+
+```ts
+// State to store selected amenities from the filter component
+const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+```
+
+This state is controlled by the **amenitiesFilter.tsx** component. When the user selects or deselects an amenity, the component updates the 'selectedAmenities' state in the parent page.
+
+```ts
+<AmenitiesFilter
+  selectedAmenities={selectedAmenities}
+  setSelectedAmenities={setSelectedAmenities}
+  allAmenities={allAmenities}
+/>
+```
+
+Every time 'selectedAmenities' changes, the page recalculates which rooms should remain visible. The filtering logic checks whether the user selected any amenities. If no filters are selected, all available rooms are shown.
+
+```ts
+/**
+ * Filter rooms based on selected amenities.
+ * If no amenities are selected, show all rooms.
+ */
+const filteredRooms =
+  selectedAmenities.length === 0
+    ? (rooms ?? [])
+    : (rooms ?? []).filter((room: Room) =>
+        /**
+         * A room must contain all the amenities the user selected.
+         * We use the every() method because it returns true only if
+         * every selected amenity is found inside the room’s amenities list.
+         * If even one selected amenity is missing, every() returns false,
+         * and the room is excluded from the filtered results.
+         * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/every
+         */
+        selectedAmenities.every((amenity) => room.amenities?.includes(amenity)),
+      );
+```
+
+If the user has selected one or more amenities, the page filters the room list using 'Array.filter()' together with 'Array.every()'. The 'every()' method ensures that a room contains all amenities selected by the user.
+
+This means that a room will only remain in the results if its 'amenities' array includes every item present in 'selectedAmenities'.
+
+After the filtering step is completed, the resulting array is rendered on the page. Each room in the 'filteredRooms' array is mapped to a 'RoomHorizontalCard' component that displays the room details.
+
+```tsx
+{
+  (filteredRooms ?? []).map((room: Room) => (
+    <RoomHorizontalCard
+      /**
+       * 'key' is needed to avoid the below error:
+       * 'searchResultsPage.tsx:123 Each child in a list should have a unique "key"'
+       * https://stackoverflow.com/questions/59161825/react-material-ui-list-should-have-a-unique-key-prop
+       */
+      key={room.id}
+      id={room.id}
+      name={room.name}
+      // Using .split(".")[0] effectively retrieves the part of the string before the first period
+      // https://www.w3schools.com/python/ref_string_split.asp
+      description={room.description?.split(".")[0] + "."}
+      price={room.price}
+      // Fetching the first image of the array
+      // images={[getPublicUrl(`/rooms/${room.id}/${room.images[0]}`)]}
+      // We are now fetching all images shown through the roomHorizontalCardCarousel
+      images={room.images.map(
+        (img) =>
+          /**
+           * The uploaded image path is like 'rooms/a77ddc44-0a5e-4585-b4e7-5b61cb2865d3/1770573915402-DruidsRest2.jpg',
+           * as per 'const filePath = `rooms/${roomId}/${Date.now()}-${safeName}`;' in the adminRoomsPage.tsx file.
+           * Hence, we are saying below, that if 'img' does include 'rooms/' in its path, that mean it has been uploaded by
+           * the admin and will show the uploaded path. Otherwise, it will enable the old image path display, whose
+           * image was originally manually uploaded straight into supabase
+           */
+          img.includes("rooms/")
+            ? getPublicUrl(img) // New uploaded images path
+            : getPublicUrl(`rooms/${room.id}/${img}`), // old seeded image
+      )}
+      amenities={room?.amenities}
+      checkIn={checkIn}
+      checkOut={checkOut}
+      guests={guests}
+      capacity={Number(room.capacity)}
+    />
+  ));
+}
+```
+
+The complete flow therefore starts with URL parameters defining the search criteria, continues with a Supabase backend query that returns rooms available for those dates and guest capacity, and finishes with a client-side filter that narrows the results based on the amenities selected by the user. The final filtered dataset is then rendered as a list of room cards on the page.
+
+## Amenities Filters List
+
+The 'AmenitiesFilter' component is responsible for displaying a list of amenities in the Search Results Page and allowing the user to select or deselect them. It does not manage the filter state itself. Instead, it receives the current state and the state updater function from its parent component, which in this case is the search results page.
+
+![alt text](image-61.png)
+
+The component receives three props defined by the 'AmenitiesFilterProps' in the **type/interface.ts**: 'allAmenities', 'selectedAmenities', and 'setSelectedAmenities':
+
+```ts
+/**
+ * React state setter for updating the selected amenities.
+ * https://react.dev/learn/state-as-a-snapshot
+ */
+export interface AmenitiesFilterProps {
+  allAmenities: string[];
+  selectedAmenities: string[];
+  /**
+   * State setter used to update the list of amenities to filter.
+   * Passed down from the parent so the filter can modify the state.
+   * http://stackoverflow.com/questions/65823778/ddg#65824149
+   * https://www.xjavascript.com/blog/how-can-i-define-type-for-setstate-when-react-dispatch-react-setstateaction-string-not-accepted/
+   */
+  setSelectedAmenities: React.Dispatch<React.SetStateAction<string[]>>;
+}
+```
+
+They are then passed into the component
+
+```ts
+const AmenitiesFilter: React.FC<AmenitiesFilterProps> = {
+  allAmenities,
+  selectedAmenities,
+  setSelectedAmenities,
+};
+```
+
+'allAmenities' contains the complete list of amenities that can be filtered.
+'selectedAmenities' represents the amenities currently selected by the user.
+'setSelectedAmenities' is the React state setter function used to update that list.
+
+The component’s main logic lives inside the 'toggle' function. This function runs whenever the user clicks on an amenity button.
+
+```ts
+ const toggle = (amenity: string) => {
+    // Setting the state of the selected Amenity passing in the previous list array
+    setSelectedAmenities((previousList) => {
+```
+
+Instead of directly modifying the state, the function uses the functional form of the React state setter. This provides access to the previous state ('previousList') to ensure that updates are based on the most recent state value.
+
+Inside the function, the code first checks whether the amenity is already selected.
+This returns a boolean. If the amenity already exists in the list, the user is effectively unselecting it.
+
+When the amenity is already selected, it must be removed from the list. The `filter()` method creates a new array that excludes that amenity.
+
+```ts
+    // Boolean variable which will be false or true depending on whether
+      // the amenity was already clicked
+      const isSelected = previousList.includes(amenity);
+
+      // If it is selected, which means that the amenity had already been clicked
+      // then we remove it from the list (it has been unclicked)
+      if (isSelected) {
+        // ...we create a new list which excludes the selected amenity
+        const newList = previousList.filter((item) => item !== amenity);
+        return newList;
+      }
+
+      // Add amenity to the previous list if isSelected is false, which means
+      // that the amenity was not selected in the first but gets selected now
+      const newList = [...previousList, amenity];
+      return newList;
+    });
+  };
+
+
+```
+
+This produces a new array containing every item except the clicked amenity. Returning this array updates the parent state and removes the filter.
+
+If the amenity is not already selected, it needs to be added to the list. A new array is created using the spread operator.
+
+This copies all previously selected amenities and appends the newly selected one. Returning this new array updates the state and activates the filter.
+
+After defining the toggle logic, the component renders the amenity buttons. The `map()` function loops through all amenities and generates one button for each.
+
+```tsx
+{allAmenities.map((amenity) => (
+  <button
+    key={amenity}
+    onClick={() => toggle(amenity)}
+```
+
+Each button calls the 'toggle' function when clicked, passing the corresponding amenity.
+
+The visual appearance of each button depends on whether that amenity is currently selected. This is controlled through conditional styling.
+
+```ts
+ // Change the background color based on whether that amenity is selected ornot
+            background: selectedAmenities.includes(amenity)
+              ? "#e26d5c"
+              : "white",
+            // The same applies for the color
+            color: selectedAmenities.includes(amenity) ? "white" : "black",
+            cursor: "pointer",
+          }}
+        >
+          {amenity}
+        </button>
+      ))}
+```
+
+If the amenity exists in 'selectedAmenities', the button receives a highlighted background color and white text. If not, it keeps a neutral style. This provides visual feedback so the user can see which filters are active.
+
+The overall flow works as follows. The parent page provides the list of all amenities and the current selected amenities. The 'AmenitiesFilter' component displays them as buttons. When the user clicks a button, the 'toggle' function either adds or removes that amenity from the selected list. React updates the state in the parent component, which triggers a re-render and updates both the button styling and the filtered room results.
+
 ## editSearchRoomsForm
 
 Here we built a responsive component called 'EditSearchRoomsForm' that allows users to update their check-in date, check-out date, and number of guests on the Search Results page.
@@ -1554,10 +1957,11 @@ Here we built a responsive component called 'EditSearchRoomsForm' that allows us
 The component leverages the 'editSearchRoomsFormProps' from the 'interface.ts' file
 
 ```
+
 const EditSearchRoomsForm: React.FC<editSearchRoomsFormProps> = ({
-  initialCheckIn,
-  initialCheckOut,
-  initialGuests,
+initialCheckIn,
+initialCheckOut,
+initialGuests,
 }) => {
 
 ```
@@ -1565,6 +1969,7 @@ const EditSearchRoomsForm: React.FC<editSearchRoomsFormProps> = ({
 and manage the form values entried by the user through the below useState
 
 ```
+
 const [checkIn, setCheckIn] = useState(initialCheckIn);
 const [checkOut, setCheckOut] = useState(initialCheckOut);
 const [guests, setGuests] = useState(initialGuests);
@@ -1574,34 +1979,36 @@ const [guests, setGuests] = useState(initialGuests);
 We added date validation logic to prevent selecting past dates and to ensure check-out is always at least one day after check-in by dynamically setting the 'min' attribute on the date inputs.
 
 ```
- /**
-   * Compute the minimum allowed check-out date.
-   * If check-in is selected next day after check-in is
-   * the minimum allowed date possible.
-   * If not, then, 'tomorrow'
-   * */
+
+/\*\*
+
+- Compute the minimum allowed check-out date.
+- If check-in is selected next day after check-in is
+- the minimum allowed date possible.
+- If not, then, 'tomorrow'
+- \*/
   const nextDayAfterCheckIn = checkIn
-    ? new Date(new Date(checkIn).setDate(new Date(checkIn).getDate() + 1))
-        .toISOString()
-        .split("T")[0]
-    : null;
+  ? new Date(new Date(checkIn).setDate(new Date(checkIn).getDate() + 1))
+  .toISOString()
+  .split("T")[0]
+  : null;
 
 ...
 
 <label style={{ marginBottom: "0.5rem", fontWeight: "bold" }}>
-          Check‑out
-        </label>
-        <input
-          type="date"
-          value={checkOut}
-          onChange={(e) => setCheckOut(e.target.value)}
-          required
-          /**
-           * Ensures check-out cannot be before check-in, nor can it be the same day.
-           * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/date
-           */
-          min={nextDayAfterCheckIn || tomorrowStr}
-          style={{
+Check‑out
+</label>
+<input
+type="date"
+value={checkOut}
+onChange={(e) => setCheckOut(e.target.value)}
+required
+/\*\*
+_ Ensures check-out cannot be before check-in, nor can it be the same day.
+_ https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/date
+\*/
+min={nextDayAfterCheckIn || tomorrowStr}
+style={{
             padding: "0.75rem",
             fontSize: "1rem",
             borderRadius: "10px",
@@ -1609,7 +2016,7 @@ We added date validation logic to prevent selecting past dates and to ensure che
             width: "100%",
             boxSizing: "border-box",
           }}
-        />
+/>
 ...
 
 ```
@@ -1617,18 +2024,21 @@ We added date validation logic to prevent selecting past dates and to ensure che
 When the form is submitted, we validate the dates again and then redirect the user to '/search-results' with updated query parameters in the URL.
 
 ```
-/**
-   * updateSearch validates date order, prevents invalid submissions, and
-   * redirects to /search-results with updated query params
-   * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent
-   * https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams
-   * */
+
+/\*\*
+
+- updateSearch validates date order, prevents invalid submissions, and
+- redirects to /search-results with updated query params
+- https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent
+- https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams
+- \*/
   const updateSearch = () => {
-    if (!checkIn || !checkOut) return alert("Please select valid dates");
-    if (new Date(checkOut) <= new Date(checkIn))
-      return alert("Check‑out must be after check‑in.");
-    window.location.href = `/search-results?checkIn=${encodeURIComponent(checkIn)}&checkOut=${encodeURIComponent(checkOut)}&guests=${guests}`;
+  if (!checkIn || !checkOut) return alert("Please select valid dates");
+  if (new Date(checkOut) <= new Date(checkIn))
+  return alert("Check‑out must be after check‑in.");
+  window.location.href = `/search-results?checkIn=${encodeURIComponent(checkIn)}&checkOut=${encodeURIComponent(checkOut)}&guests=${guests}`;
   };
+
 ```
 
 Overall, the component combines state management, validation, responsive design, and controlled inputs to create a user-friendly and adaptive search update form.
@@ -1663,55 +2073,61 @@ The page reads the 'roomId' from the URL using React Router,
 
 ```
 
-  /**
-   * Extract roomId from the URL.
-   * React Router useParams:
-   * https://reactrouter.com/en/main/hooks/use-params
-   */
+/\*\*
+
+- Extract roomId from the URL.
+- React Router useParams:
+- https://reactrouter.com/en/main/hooks/use-params
+  \*/
   const { roomId } = useParams<{ roomId: string }>();
+
 ```
 
 then fetches the room data with React Query ('getRoomById')
 
 ```
-/*
-  * React Query fetches Room Details cached by roomId
-  */
- const {
-   data: room,
-   isLoading: roomLoading,
-   error: roomError,
- } = useQuery({
-   queryKey: ["room", roomId],
-   /**
-    * React Router’s useParams() always returns 'string | undefined',
-    * because the URL might not contain the param.
-    * React Query’s queryFn expects a definite string, hence, we add 'as string'.
-    * '...treat the value as a string type, even if it might not originally be one.'
-    * https://www.webdevtutor.net/blog/typescript-as-string-vs-tostring
-    */
-   queryFn: async () => getRoomById(roomId as string),
-   enabled: !!roomId, // Prevents running until roomId is defined
- });
+
+/\*
+
+- React Query fetches Room Details cached by roomId
+  \*/
+  const {
+  data: room,
+  isLoading: roomLoading,
+  error: roomError,
+  } = useQuery({
+  queryKey: ["room", roomId],
+  /\*\*
+  - React Router’s useParams() always returns 'string | undefined',
+  - because the URL might not contain the param.
+  - React Query’s queryFn expects a definite string, hence, we add 'as string'.
+  - '...treat the value as a string type, even if it might not originally be one.'
+  - https://www.webdevtutor.net/blog/typescript-as-string-vs-tostring
+    \*/
+    queryFn: async () => getRoomById(roomId as string),
+    enabled: !!roomId, // Prevents running until roomId is defined
+    });
 
 ```
 
 which is an API async function stored in the **guestease-api.ts** file which fetches the room data from the Supabase 'rooms' table
 
 ```
-/**
-* This is a helper to fetch room data by its id to populate
-* the Booking Confirmation page
-*/
-export const getRoomById = async (roomId: string) => {
-const { data, error } = await supabase
+
+/\*\*
+
+- This is a helper to fetch room data by its id to populate
+- the Booking Confirmation page
+  _/
+  export const getRoomById = async (roomId: string) => {
+  const { data, error } = await supabase
   .from("rooms")
-  .select("*")
+  .select("_")
   .eq("id", roomId)
   .single();
 
 if (error) {
-  throw new Error(`Unable to fetch room: ${error.message}`);
+throw new Error(`Unable to fetch room: ${error.message}`);
 }
 
 return data;
@@ -1719,9 +2135,9 @@ return data;
 
 ```
 
-At that points, we check the room availability through the custom hook /hooks/useAvailableRooms.ts that calls Supabase.
+At that points, we check the room availability through the custom hook **hooks/useAvailableRooms.ts** that calls Supabase.
 
-```
+```ts
 ...
  const params = new URLSearchParams(location.search);
   const paramCheckIn = params.get("checkIn") || "";
@@ -1733,7 +2149,7 @@ At that points, we check the room availability through the custom hook /hooks/us
   const [checkOut, setCheckOut] = useState<string>(paramCheckOut);
   const [guests, setGuests] = useState<number>(paramGuests);
 ...
-...
+...ts
 /*
    * Fetching Availability
    * Uses the custom hook useAvailableRooms which calls the Supabase RPC function.
@@ -1753,51 +2169,48 @@ When a user clicks the 'Book' CTA, we validate the dates and availability,
 
 ![alt text](image-33.png)
 
-```
- /**
-     *'The some() method of Array instances returns true if it finds one element in the array
-     * that satisfies the provided testing function. Otherwise, it returns false.'
-     * In this case, we are expecting to find the room 'id'.
-     * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/some
-     * */
-    const isAvailable = availability?.some((r: any) => r.id === room.id);
-    if (!isAvailable) {
-      setError("This room is not available for the selected dates.");
-      return;
-    }
-
+```ts
+/**
+ *'The some() method of Array instances returns true if it finds one element in the array
+ * that satisfies the provided testing function. Otherwise, it returns false.'
+ * In this case, we are expecting to find the room 'id'.
+ * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/some
+ * */
+const isAvailable = availability?.some((r: any) => r.id === room.id);
+if (!isAvailable) {
+  setError("This room is not available for the selected dates.");
+  return;
+}
 ```
 
 confirm the user is logged in via Supabase authentication,
 
-```
- /**
-       * To be able to book, a user must be logged in, therefore, we need
-       * to retrieve the user from supabase.
-       * https://supabase.com/docs/reference/javascript/auth-getuser
-       * */
-      const { data } = await supabase.auth.getUser();
-      const userId = data.user?.id;
-
+```ts
+/**
+ * To be able to book, a user must be logged in, therefore, we need
+ * to retrieve the user from supabase.
+ * https://supabase.com/docs/reference/javascript/auth-getuser
+ * */
+const { data } = await supabase.auth.getUser();
+const userId = data.user?.id;
 ```
 
 and ensure a Stripe customer exists.
 
-```
- /**
-       * We ensure the Stripe customer exists before opening the payment dialog.
-       * Checks if the user already has a Stripe customer, and  creates one if they don’t,
-       * and finally returns the Stripe customer ID
-       * */
-      await createStripeCustomerApi({ email: data.user?.email!, userId });
-      // Open the Stripe payment dialog so the user can enter their card details.
-      setStripeCheckOutModalOpen(true);
-
+```ts
+/**
+ * We ensure the Stripe customer exists before opening the payment dialog.
+ * Checks if the user already has a Stripe customer, and  creates one if they don’t,
+ * and finally returns the Stripe customer ID
+ * */
+await createStripeCustomerApi({ email: data.user?.email!, userId });
+// Open the Stripe payment dialog so the user can enter their card details.
+setStripeCheckOutModalOpen(true);
 ```
 
 The above async function is stored in the **user-booking-api.ts** file
 
-```
+```ts
 /**
  * Creates a Stripe customer for the user if they don't already have one.
  * https://docs.stripe.com/api/customers/create
@@ -1821,12 +2234,11 @@ export const createStripeCustomerApi = async (params: {
   // Expected: { customerId: "cus_123" }
   return data;
 };
-
 ```
 
 and calls the backend Express route **createStripeCustomer.js**, which handles the creating/retrieving logic of the Stripe customer for a logged-in user before they make a booking.
 
-```
+```ts
 /**
      * We check if the user already has a Stripe customer ID.
      * If yes, we are not creating a new customer.
@@ -1860,7 +2272,7 @@ and calls the backend Express route **createStripeCustomer.js**, which handles t
 
 Goig back to the **roomDetailsPage.tsx**, we, temporarily store the booking details, open the Stripe payment dialog,
 
-```
+```ts
 // We store the booking data temporarily until the payment flow completes.
       setPendingBookingData({
         room_id: room.id,
@@ -1880,42 +2292,40 @@ Goig back to the **roomDetailsPage.tsx**, we, temporarily store the booking deta
 
 and only after a successful payment method setup do we create the booking through the backend API.
 
-```
+```ts
+/**
+ * This callback is called after the user successfully completes
+ * the Stripe payment flow and the payment method has been saved.
+ * At this point we can safely create the booking in our backend.
+ * */
+const handlePaymentSuccessSoBookNow = async (_paymentMethodId: string) => {
+  try {
+    if (!pendingBookingData) return;
 
- /**
-   * This callback is called after the user successfully completes
-   * the Stripe payment flow and the payment method has been saved.
-   * At this point we can safely create the booking in our backend.
-   * */
-  const handlePaymentSuccessSoBookNow = async (_paymentMethodId: string) => {
-    try {
-      if (!pendingBookingData) return;
-
-      /**
-       * We then create the booking object to be sent to the user-booking-api,
-       * which in turn will post it to the userCreateBooking.js in the backend.
-       * The userCreateBooking.js file in the backend will create the booking server-side
-       * and send it to supabase
-       * */
-      const booking = await createBookingApi(pendingBookingData);
-      // Close the payment dialog and clear the pending booking data.
-      setStripeCheckOutModalOpen(false);
-      setPendingBookingData(null);
-      // Redirect to the confirmation page
-      navigate(`/booking-confirmation/${booking.booking.id}`);
-    } catch (err: any) {
-      setError(err.message);
-      setStripeCheckOutModalOpen(false);
-    }
-  };
-
+    /**
+     * We then create the booking object to be sent to the user-booking-api,
+     * which in turn will post it to the userCreateBooking.js in the backend.
+     * The userCreateBooking.js file in the backend will create the booking server-side
+     * and send it to supabase
+     * */
+    const booking = await createBookingApi(pendingBookingData);
+    // Close the payment dialog and clear the pending booking data.
+    setStripeCheckOutModalOpen(false);
+    setPendingBookingData(null);
+    // Redirect to the confirmation page
+    navigate(`/booking-confirmation/${booking.booking.id}`);
+  } catch (err: any) {
+    setError(err.message);
+    setStripeCheckOutModalOpen(false);
+  }
+};
 ```
 
 Finally, we redirect the user to the booking confirmation page.
 
 Another feature of this page is that it retrieves guest reviews of their stay experince about the room and calculates the average rating to display alongside the room details.
 
-```
+```ts
 /**
    * We fetch the reviews through the useRoomReviews hook
    */
@@ -1929,7 +2339,7 @@ Another feature of this page is that it retrieves guest reviews of their stay ex
 
 The above object retrieving an array of reviews leverages the **hooks/useRoomReviews.ts** hook
 
-```
+```ts
 import { getRoomReviews } from "../api/reviews-api";
 
 export const useRoomReviews = (roomId: string | undefined) => {
@@ -1940,12 +2350,11 @@ export const useRoomReviews = (roomId: string | undefined) => {
     enabled: !!roomId,
   });
 };
-
 ```
 
 which, in its React Query call, makes use of the 'getRoomReviews()' function in the **api/reviews-api.ts** file
 
-```
+```ts
 /**
  * This is a helper to get all reviews of a specific room, which also
  * create a 'join' with the profiles table through 'profile as a foreign key
@@ -1983,7 +2392,6 @@ export const getRoomReviews = async (roomId: string) => {
     return { ...review, guestName };
   });
 };
-
 ```
 
 This function fetches all reviews for a specific room from the 'reviews' table using Supabase. It also joins the related user data from the 'profiles' table (via a foreign key) to get the reviewer’s first and last name, and orders the results by newest first.
@@ -1992,13 +2400,12 @@ Finally, it maps over the reviews to create a 'guestName' by merging the user’
 
 The average rating, instead, is calculated through the below function calculateAverageRating() in **utils/calculateAverageRating.ts**, which is called in by the below variable:
 
-```
- // Using the below function to get the average review rating
-  const avgRating = calculateAverageRating(reviews);
-```
-
+```ts
+// Using the below function to get the average review rating
+const avgRating = calculateAverageRating(reviews);
 ```
 
+```ts
 import type { Review } from "../types/interfaces";
 
 /**
@@ -2013,7 +2420,6 @@ export function calculateAverageRating(reviews: Review[] = []): number {
   const total = reviews.reduce((sum, r) => sum + r.rating, 0);
   return Number((total / reviews.length).toFixed(1));
 }
-
 ```
 
 Overall, this component ties together routing, data fetching, authentication, availability validation, Stripe payment handling, and final booking creation into one complete reservation flow.
@@ -6667,7 +7073,7 @@ export function useAdminUpdateRoom() {
 }
 ```
 
-To be noticed that we are invalidating 2 different queries serve:
+To be noticed that we are invalidating 2 different queries:
 
 - ["rooms"] refreshes the rooms list used in the admin dashboard.
 - ["rooms", payload.id] refreshes the single-room query used in room detail views.
@@ -6967,3 +7373,980 @@ Overall, the component separates concerns effectively: data fetching is handled 
 - https://tanstack.com/query/latest/docs/framework/react/reference/useQuery
 - https://tanstack.com/query/latest/docs/framework/react/quick-start
 - https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-x
+
+## Admin dashboard filters
+
+In the admin dashboard, the Admin Bookings, Admin Rooms, and Admin Users pages all use the same filtering approach.
+
+Each page stores filter inputs in useState() and passes them to a filtering function or custom hook that returns the filtered dataset. To avoid repetition, the explanation below focuses only on the Admin Bookings filtering logic, but the same pattern is used across the other admin pages.
+
+The filter state is created with 'useState'. Each field represents a possible filter the admin can apply.
+
+```ts
+// We set a useState for the filters and leave the fields as empty
+const [filters, setFilters] = useState({
+  search: "",
+  room: "",
+  first_name: "",
+  last_name: "",
+  email: "",
+  check_in: "",
+  check_out: "",
+  created_at: "",
+  guests: "",
+});
+```
+
+This object stores all filter inputs. Initially everything is empty, meaning no filtering is applied. As the admin types or selects values in the filter UI, the values inside this object are updated.
+
+The UI that updates these filters is a separate component in **components/bookingFiltersUI.tsx**.
+
+```tsx
+<BookingFilterUI
+  filters={filters}
+  setFilters={setFilters}
+  rooms={rooms ?? []}
+/>
+```
+
+This component receives the filter state and the setter function as per its props:
+
+```ts
+/**
+ * Props for the BookingFilterUI component.
+ */
+interface BookingFilterUIProps {
+  filters: any;
+  setFilters: (filters: any) => void;
+  rooms: { id: string; name: string }[];
+}
+```
+
+When the admin types in a field or selects a room, the component updates the corresponding property in the 'filters' object using 'setFilters'.
+
+Example after the admin interacts with the UI:
+
+```ts
+filters = {
+  search: "smith",
+  room: "Clan Suite",
+  first_name: "",
+  last_name: "",
+  email: "",
+  check_in: "",
+  check_out: "",
+  created_at: "",
+  guests: "",
+};
+```
+
+The actual filtering happens through the function 'useFilteredBookings()' in a custom hook called **useFilteredBookings.tsx**. The page calls the hook and passes the original bookings data, the rooms data, and the filters object.
+
+```ts
+const filteredBookings = useFilteredBookings(bookings, rooms, filters);
+```
+
+**useFilteredBookings.tsx**
+
+```ts
+import { getRoomName } from "../utils/getRoomName";
+
+export function useFilteredBookings(
+  bookings: any[] | undefined,
+  rooms: any[] | undefined,
+  filters: any,
+) {
+  const list = bookings ?? [];
+  const roomList = rooms ?? [];
+
+  return list.filter((b: any) => {
+    // Creating search variable
+    const search = filters.search.toLowerCase();
+
+    // Filtered data
+    // https://www.kindacode.com/article/how-to-create-a-filter-search-list-in-react
+    // https://www.cybrosys.com/blog/how-to-build-a-search-bar-to-filter-data-in-react
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/includes
+    const searchString = [
+      b.id,
+      b.first_name,
+      b.last_name,
+      b.user_email,
+      getRoomName(b.room_id, roomList),
+      b.check_in,
+      b.check_out,
+      b.guests,
+      b.total_price,
+      new Date(b.created_at).toLocaleString(),
+      b.charged,
+    ]
+      // We combine all the booking fields to be able to search anything that is included in the rows
+      .join(" ")
+      .toLowerCase();
+
+    // Check if the global search text appears anywhere in the combined search string
+    const matchesSearch = searchString.includes(search);
+
+    // Match room by exact room_id (empty filter means "match all")
+    const matchesRoom = filters.room
+      ? String(b.room_id) === String(filters.room)
+      : true;
+
+...
+
+// A read out here would be: 'Check if the booking matches the first name filter.
+// If a first name filter exists, then verify that the booking’s first name contains
+// the filter text (ignoring case). If no filter is provided, return true so the booking is not excluded'
+
+...
+    // Match first name (case‑insensitive)
+    const matchesFirst = filters.first_name
+      ? b.first_name?.toLowerCase().includes(filters.first_name.toLowerCase())
+      : true;
+
+    // Match last name (case‑insensitive)
+    const matchesLast = filters.last_name
+      ? b.last_name?.toLowerCase().includes(filters.last_name.toLowerCase())
+      : true;
+
+    // Match email (case‑insensitive)
+    const matchesEmail = filters.email
+      ? b.user_email?.toLowerCase().includes(filters.email.toLowerCase())
+      : true;
+
+    // Match number of guests (string → number)
+    const matchesGuests = filters.guests
+      ? b.guests === Number(filters.guests)
+      : true;
+
+    // Match check‑in date (compare only the date portion)
+    const matchesCheckIn = filters.check_in
+      ? new Date(b.check_in).toDateString() ===
+        new Date(filters.check_in).toDateString()
+      : true;
+
+    // Match check‑out date
+    const matchesCheckOut = filters.check_out
+      ? new Date(b.check_out).toDateString() ===
+        new Date(filters.check_out).toDateString()
+      : true;
+
+    // Match created_at date
+    const matchesCreatedAt = filters.created_at
+      ? new Date(b.created_at).toDateString() ===
+        new Date(filters.created_at).toDateString()
+      : true;
+
+    // Match charged status ("Yes" means true, "No" means false)
+    let matchesCharged = true;
+
+    // If the user selected "Yes", then the booking must have charged === true
+    if (filters.charged === "Yes") {
+      matchesCharged = b.charged === true;
+      // If the user selected "No", then the booking must have charged === false
+    } else if (filters.charged === "No") {
+      matchesCharged = b.charged === false;
+      // If the user selected nothing (""), we leave matchesCharged = true
+      // Meaning: do not filter by charged status
+    }
+
+    // Booking passes only if all filters match
+    return (
+      matchesSearch &&
+      matchesRoom &&
+      matchesFirst &&
+      matchesLast &&
+      matchesEmail &&
+      matchesGuests &&
+      matchesCheckIn &&
+      matchesCheckOut &&
+      matchesCreatedAt &&
+      matchesCharged
+    );
+  });
+}
+
+```
+
+The hook receives the full list of bookings returned by React Query:
+
+```ts
+const { data: bookings } = useQuery({
+  queryKey: ["bookings"],
+  queryFn: getAllBookings,
+});
+```
+
+Instead of rendering 'bookings', the page renders 'filteredBookings'.
+
+```tsx
+{filteredBookings?.map((b) => (
+  <TableRow key={b.id}>
+```
+
+This means the hook acts like a processing layer between the raw data and the UI.
+
+The flow of the filter system looks like this:
+
+Admin types in filter fields => BookingFilterUI updates the filters state => filters object changes => useFilteredBookings(bookings, rooms, filters) runs again => hook returns a filtered list => filteredBookings is rendered in the table.
+
+For example, if the admin types 'smith' in the search field, the filters object changes.
+
+```ts
+filters.search = "smith";
+```
+
+The hook will check each booking and keep only the ones that match the filter. The returned array might look like this:
+
+```ts
+filteredBookings = [
+  { first_name: "John", last_name: "Smith", room_id: "123" },
+  { first_name: "Anna", last_name: "Smith", room_id: "456" },
+];
+```
+
+The table then displays only those rows.
+
+The same logic applies to other fields such as room, check-in date, guests, or email. The filters object simply collects all filter conditions in one place, and the hook applies them to the dataset before rendering.
+
+In summary, the filtering system follows three steps. The filter inputs update a 'filters' state object. That object is passed into a custom hook that filters the bookings dataset.
+
+The component then renders the filtered results instead of the original list.
+
+### Booking Filter UI
+
+![alt text](image-62.png)
+
+This component is responsible for displaying the booking filters UI in the admin bookings page.
+
+It does not perform the filtering itself.
+
+Instead, it provides the interface for the admin to open the filters panel and change filter values, which are then used elsewhere to filter the bookings list.
+
+The component receives three props from the parent page: the current filter values, the function to update them, and the list of rooms.
+
+```ts
+interface BookingFilterUIProps {
+  filters: any;
+  setFilters: (filters: any) => void;
+  rooms: { id: string; name: string }[];
+}
+```
+
+'filters' contains the current filter state, 'setFilters' allows updating that state, and 'rooms' provides the list of rooms used in the room filter dropdown.
+
+Inside the component there is a local piece of state that controls whether the filter drawer is open or closed.
+
+```ts
+const [drawerOpen, setDrawerOpen] = useState(false);
+```
+
+This state is purely for UI behavior. When 'drawerOpen' is 'true', the filter drawer appears on the screen. When it is 'false', the drawer is hidden.
+
+The component renders a floating action button (FAB). This button appears fixed on the screen and is used to open the filter panel.
+
+```tsx
+<Fab variant="extended" onClick={() => setDrawerOpen(true)}>
+  <FilterAltIcon />
+</Fab>
+```
+
+When the admin clicks the button, the 'setDrawerOpen(true)' function runs, which changes the state and opens the drawer.
+
+The filters themselves appear inside a Material UI 'Drawer' component.
+
+```tsx
+<Drawer
+  anchor="left"
+  open={drawerOpen}
+  onClose={() => setDrawerOpen(false)}
+>
+```
+
+The drawer slides in from the left side of the screen.
+The 'open' property is controlled by 'drawerOpen', so the drawer only appears when the state is 'true'.
+If the user closes the drawer, the state is set back to 'false'.
+
+Inside this container the component renders 'FilterBookingsCard'.
+
+```tsx
+<FilterBookingsCard filters={filters} setFilters={setFilters} rooms={rooms} />
+```
+
+This component contains the actual filter inputs such as text fields, date fields, or dropdowns. When the admin changes a filter value, 'setFilters' updates the filter state in the parent page.
+
+In summary, this component acts as a 'UI controller for the booking filters'. It displays a floating button that opens a side drawer, and inside that drawer it renders the filter form that updates the filtering state used by the admin bookings table.
+
+### Booking Filtered Card
+
+This component renders the filter form used in the admin bookings page. It displays a Material UI card containing several inputs that allow the admin to filter bookings by different fields such as room, guest name, email, dates, number of guests, and payment status.
+
+The component receives three props:
+
+```ts
+const FilterBookingsCard: React.FC<FilterBookingsCardProps> = ({
+  filters,
+  setFilters,
+  rooms,
+}) => {
+  /**
+   * Generic handler for updating any filter field.
+   */
+  const handleChange = (field: string, value: string) => {
+    setFilters({ ...filters, [field]: value });
+  };
+
+```
+
+'filters' stores the current filter values, 'setFilters updates those values, and 'rooms' is used to populate the room dropdown.
+
+The component defines a generic function 'handleChange()' to update any filter field.
+
+```ts
+const handleChange = (field: string, value: string) => {
+  setFilters({ ...filters, [field]: value });
+};
+```
+
+It copies the existing filters and updates only the field that changed.
+
+Example:
+
+```ts
+handleChange("first_name", "John");
+```
+
+This updates the filter state to include `"John"` as the first name filter.
+
+The component also provides a function to 'reset all filters'.
+
+```ts
+/** Reset all filters to default empty values */
+const resetFilters = () => {
+  setFilters({
+    search: "",
+    room: "",
+    first_name: "",
+    last_name: "",
+    email: "",
+    guests: "",
+    check_in: "",
+    check_out: "",
+    created_at: "",
+    charged: "",
+  });
+};
+```
+
+When the reset button is clicked, all filter values are cleared.
+
+Inside the 'Card', several inputs are rendered. For example, the 'global search field'
+
+```tsx
+{
+  /* Global search across all fields */
+}
+<TextField
+  label="Search all fields"
+  value={filters.search}
+  onChange={(e) => handleChange("search", e.target.value)}
+  slotProps={{
+    root: { sx: styles.formControl },
+  }}
+/>;
+```
+
+which updates 'filters.search'.
+
+The 'room filter' uses the 'rooms' array to populate a dropdown:
+
+```tsx
+{
+  /* Room filter */
+}
+<FormControl sx={styles.formControl}>
+  <InputLabel>Room</InputLabel>
+  <Select
+    label="Room"
+    value={filters.room}
+    onChange={(e) => handleChange("room", e.target.value)}
+  >
+    <MenuItem value="">All Rooms</MenuItem>
+    {rooms.map((r) => (
+      <MenuItem key={r.id} value={r.id}>
+        {r.name}
+      </MenuItem>
+    ))}
+  </Select>
+</FormControl>;
+```
+
+Other fields allow filtering by 'first name, last name, email, guests, check-in, check-out, created date, and charged status.
+
+Finally, the 'Reset Filters' button clears all filters:
+
+```tsx
+{
+  /* Reset Button */
+}
+<Button variant="outlined" fullWidth sx={{ mt: 2 }} onClick={resetFilters}>
+  Reset Filters
+</Button>;
+```
+
+Overall, this component only handles the filter UI and state updates. The actual filtering logic is handled separately by the **components/useFilteredBookings.tsx** hook, which uses these filter values to determine which bookings should be displayed.
+
+# Supabase tables and functions
+
+## Rooms table
+
+Supabadse uses SQL and PostgreSQL.
+
+The below snippet shows the SQL database schema degfinition to create the 'public.rooms' table:
+
+```sql
+DROP TABLE IF EXISTS public.rooms;
+
+-- create rooms table with images field
+CREATE TABLE IF NOT EXISTS public.rooms (
+  -- We ensure that each room has its own id
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  name text NOT NULL,
+  description text,
+  capacity integer NOT NULL, -- number of guests (max)
+  price numeric(10,2) NOT NULL,
+  amenities jsonb, -- These will be tags that I can filter off of the Search Results page
+  images jsonb,
+  created_at timestamptz DEFAULT now()
+);
+```
+
+'amenities jsonb'
+Stores room features (like balcony, tea tray, etc.) as a JSON array using PostgreSQL’s binary JSON format.
+
+Example structure:
+
+```sql
+["Tea & Coffee Tray", "Balcony", "King bed"]
+```
+
+`images jsonb`
+Stores image filenames as a JSON array so multiple images can be attached to one room.
+
+Example:
+
+```sql
+["room1.png", "room2.png", "room3.png"]
+```
+
+Basically, 'JSONB' stores JSON data in a binary format which allows indexing, faster queries, and flexible data structures compared to plain text.
+
+Example query filtering by amenity:
+
+```sql
+SELECT *
+FROM public.rooms
+WHERE amenities @> '["Balcony"]'; -- @> is a PostgreSQL containment operator used mainly with JSONB and array
+```
+
+At that point, once the table was created, we simply inserted the data of the 8 rooms for our app. Ex.:
+
+```sql
+-- Insert updated Irish-themed boutique guesthouse rooms WITH amenities and images
+INSERT INTO public.rooms (name, description, capacity, price, amenities, images)
+VALUES
+(
+  'Seanchaí Nook',
+  'Charming compact single ideal for quiet stays or writing retreats. The Seanchaí Nook is purpose-built for solitude, creativity, and deep focus. With sound-insulated walls, a dedicated writing desk, and Celtic-inspired décor, it stands apart as the most intimate and distraction-free room in the house. Ideal for writers, thinkers, or guests seeking quiet over luxury.',
+  1,
+  40.00,
+  '[
+    "Writer’s Corner / Work Nook",
+    "Remote‑Work Friendly",
+    "Tea & Coffee Tray",
+    "Homely Touches & Charm",
+    "Single bed"
+  ]',
+  '["brigidshaven1.png","brigidshaven2.png","brigidshaven3.png","brigidshaven4.png"]'
+),
+...
+
+```
+
+Each row inserted represents one boutique guesthouse room with its metadata stored in structured columns and flexible JSON arrays for amenities and images.
+
+### Source attributions
+
+- https://www.postgresql.org/docs/current/datatype-json.html
+- https://www.postgresql.org/docs/current/functions-json.html
+- https://www.tigerdata.com/learn/how-to-query-jsonb-in-postgresql
+- https://www.geeksforgeeks.org/postgresql/what-is-jsonb-in-postgresql/
+
+## Bookings table
+
+The 'bookings' table was originally created through the below create database schema definition:
+
+```sql
+-- Drops the bookings table if it already exists.
+DROP TABLE IF EXISTS public.bookings;
+
+-- ==========================================
+-- 1. Create bookings table
+-- ==========================================
+CREATE TABLE IF NOT EXISTS public.bookings (
+  -- https://www.postgresql.org/docs/current/functions-uuid.html
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  room_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  check_in date NOT NULL,
+  check_out date NOT NULL,
+  guests integer NOT NULL,
+  -- Automatically generated daterange used for overlap detection
+  -- '[)' = inclusive lower bound, exclusive upper bound
+  -- https://www.postgresql.org/docs/current/rangetypes.html
+  period daterange GENERATED ALWAYS AS (daterange(check_in, check_out, '[)')) STORED,
+  total_price numeric,
+  created_at timestamptz DEFAULT now()
+);
+
+
+```
+
+'period daterange GENERATED ALWAYS AS (...) STORED' is the most intersting column as it creates a 'computed column' that converts the 'check_in' and 'check_out' dates into a PostgreSQL 'daterange'. The `[)` syntax means the start date is included and the end date is excluded. This column is automatically generated and stored so it can be used efficiently for overlap checks when validating bookings.
+
+Without the above column, we would not be able to safely ensure that no overlaps occur in our booking system.
+
+Foreign key constraints link bookings to other tables.
+For instance, 'bookings_user_id_fkey' ensures every booking references a valid user in 'public.profiles'. Initially it used 'ON DELETE RESTRICT' so a user could not be deleted while bookings existed.
+
+```sql
+-- ==========================================
+-- 2. Foreign key to profiles (user accounts)
+-- ==========================================
+-- Ensures bookings always belong to an existing profile.
+-- ON DELETE RESTRICT prevents deleting a user who still has bookings.
+-- https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-FK
+ALTER TABLE public.bookings
+ADD CONSTRAINT bookings_user_id_fkey
+FOREIGN KEY (user_id)
+REFERENCES public.profiles (id)
+ON DELETE RESTRICT;
+```
+
+'bookings_room_id_fkey' ensures 'room_id' corresponds to an existing room in 'public.rooms', preventing invalid room references. Also, we want to ensure that a room cannot be cancelled if there still are bookings associated with it.
+
+```sql
+-- Ensures room_id corresponds to an existing room.
+-- ON DELETE RESTRICT removes bookings if a room is deleted.
+-- https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-FK
+-- https://stackoverflow.com/questions/9471348/alter-table-to-give-foreign-key-constraint#9489665
+ALTER TABLE public.bookings
+ADD CONSTRAINT bookings_room_id_fkey
+FOREIGN KEY (room_id)
+REFERENCES public.rooms (id)
+ON DELETE RESTRICT;
+```
+
+'GRANT SELECT, INSERT, UPDATE, DELETE ON public.bookings TO public;' gives base CRUD permissions to the public role. In Supabase this works together with 'Row Level Security (RLS)' for fine-grained access control.
+
+'ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;' activates RLS so policies can control which rows a user can access.
+
+'CREATE POLICY "Users can view their own bookings" defines a rule allowing users to read only bookings where 'user_id = auth.uid()', meaning they can only see their own reservations.
+
+The schema is later modified to allow user deletion without breaking bookings. 'ALTER COLUMN user_id DROP NOT NULL' allows the field to become 'NULL'. The original foreign key is dropped and recreated with 'ON DELETE SET NULL', meaning if a user account is deleted the booking remains but the 'user_id' becomes 'NULL'.
+
+```sql
+ALTER TABLE public.bookings
+DROP CONSTRAINT bookings_user_id_fkey;
+
+-- And establishing a new one which can be NULL on deleting a user
+ALTER TABLE public.bookings
+ADD CONSTRAINT bookings_user_id_fkey
+FOREIGN KEY (user_id)
+REFERENCES public.profiles (id)
+ON DELETE SET NULL;
+```
+
+A trigger function 'prevent_user_deletion_if_active_bookings()' is created using PL/pgSQL. It checks whether the user being deleted still has bookings where 'check_out >= CURRENT_DATE'. If such bookings exist, it raises an exception and blocks the deletion. This prevents removing users who still have active or future reservations.
+
+```sql
+-- The function prevent_user_deletion_if_active_bookings() first check all existing
+-- bookings and compare the check_out date with the CURRENT_DATE.
+-- If check_out >= CURRENT_DATE, the user cannot be deleted
+-- https://www.postgresql.org/docs/current/plpgsql-errors-and-messages.html
+--
+CREATE OR REPLACE FUNCTION prevent_user_deletion_if_active_bookings()
+RETURNS trigger AS $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM public.bookings
+    WHERE user_id = OLD.id
+      AND check_out >= CURRENT_DATE
+  ) THEN
+    RAISE EXCEPTION 'Cannot delete user with active bookings';
+  END IF; -- closes the IF block
+
+  RETURN OLD; -- Give back the original row and do not apply any changes
+END;
+$$ LANGUAGE plpgsql;
+
+```
+
+'CREATE TRIGGER block_user_delete' attaches this function to the 'profiles' table so it runs before a user is deleted, enforcing the active-booking rule automatically.
+
+```sql
+-- This is the trigger for the prevent_user_deletion_if_active_bookings() function
+-- https://supabase.com/docs/guides/auth/managing-user-data#using-triggers
+CREATE TRIGGER block_user_delete
+BEFORE DELETE ON public.profiles
+FOR EACH ROW
+EXECUTE FUNCTION prevent_user_deletion_if_active_bookings();
+```
+
+Additional columns extend the booking system for payments.
+'charged boolean DEFAULT false' tracks whether a booking has been charged. An external scheduled job (cron) updates it within 24 hours of check-in running a cron every 10 minutes fro check-in detections:
+
+```sql
+-- This adds the 'charged' column which will change to true within 24h
+-- from the check-in thanks to the function 'charge-upcoming-bookings'
+-- and the cron in https://console.cron-job.org/dashboard that runs every 2 hours,
+alter table bookings
+add column charged boolean default false;
+```
+
+![alt text](image-63.png)
+
+'payment_intent_id text' stores the Stripe payment identifier used to process the transaction.
+
+'amount numeric' stores the charged amount so refunds and cancellations can reliably reference the original payment data.
+
+```sql
+-- Stores the Stripe payment details needed for refunds and cancellations.
+-- Because earlier versions of the system didn’t retain the actual charged
+-- amount or the payment method, refunds were unreliable.
+-- Adding payment_method_id and amount ensures each booking permanently keeps the
+-- Stripe data required for refunds on cancellations.
+ALTER TABLE bookings
+ADD COLUMN payment_intent_id text;
+
+ALTER TABLE bookings
+ADD COLUMN amount numeric;
+```
+
+Overall, this schema manages reservations, enforces referential integrity with users and rooms, applies row-level security for user access, prevents deletion of users with active bookings, and stores payment information required for Stripe-based transactions.
+
+### Source attributions
+
+- https://www.postgresql.org/docs/current/functions-uuid.html
+- https://www.postgresql.org/docs/current/rangetypes.html
+- https://supabase.com/docs/guides/auth/managing-user-data#managing-user-data
+- https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-FK
+- https://stackoverflow.com/questions/9471348/alter-table-to-give-foreign-key-constraint#9489665
+- https://supabase.com/docs/guides/auth/row-level-security
+- https://supabase.com/docs/guides/database/postgres/row-level-security
+- https://www.postgresql.org/docs/current/plpgsql-errors-and-messages.html
+- https://supabase.com/docs/guides/auth/managing-user-data#using-triggers
+- https://console.cron-job.org/dashboard
+
+## Get Available Rooms function
+
+The 'get_available_rooms' function is used to find all rooms that are available for booking for a given date range and number of guests.
+
+It ensures that rooms returned can accommodate the requested number of guests and do not have existing bookings that overlap the requested dates, optionally ignoring a specific booking when updating an existing reservation.
+
+The first step is to create the 'btree_gist' extension
+
+```sql
+-- =========================================================
+-- 1. Enable required extension for exclusion constraints
+-- btree_gist teaches PostgreSQL how to compare normal values inside a GiST index.
+-- GiST is the toolbox that lets PostgreSQL index almost anything — including ranges,
+-- geometric shapes, text search, and custom data types
+-- https://dev.to/jhonoryza/sql-index-types-b-tree-hash-gist-gist-brin-and-gin-44g0
+-- https://www.postgresql.org/docs/current/btree-gist.html
+-- https://neon.com/blog/btree_gist
+-- https://www.postgresql.org/docs/current/sql-createextension.html
+-- ============================================================
+
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+```
+
+This allows PostgreSQL’s GiST indexes to handle normal data types like 'uuid' or integers.
+
+GiST indexes are flexible and required here to enforce exclusion constraints on columns that aren’t naturally geometric or range types.
+
+```sql
+-- ============================================================
+-- 2. Add exclusion constraint to prevent overlapping bookings
+-- ============================================================
+-- This ensures that a room cannot have two bookings whose date ranges overlap.
+-- Even if two inserts happen at the same time, PostgreSQL will reject the second one.
+-- https://stackoverflow.com/questions/61501301/partial-constraint-exclude-using-gist#61503531
+-- https://www.postgresql.org/docs/current/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
+
+ALTER TABLE bookings
+DROP CONSTRAINT IF EXISTS no_overlapping_bookings;
+
+ALTER TABLE bookings
+ADD CONSTRAINT no_overlapping_bookings
+EXCLUDE USING gist (
+  room_id WITH =,
+  period WITH &&
+);
+
+```
+
+The exclusion constraint ensures that no two bookings for the same room can have overlapping periods.
+
+'room_id WITH =' checks that the room is the same, while 'period WITH &&' uses the range overlap operator to detect if the date ranges conflict. GiST indexes efficiently enforce this even for concurrent inserts, so we cannot accidentally double-book a room.
+
+The 'get_available_rooms' function queries all rooms that can fit the requested number of guests and are not already booked during the requested date range.
+The '&&' operator checks for overlaps between existing bookings 'b.period' and the requested dates 'daterange($1,$2,'[)')'.
+
+The 'exclude_booking_id' allows the function to ignore a specific booking, useful when updating a booking so it doesn’t conflict with itself, as explained in the 'User Booking page' chapter.
+
+'SECURITY DEFINER' ensures the function runs with the owner’s privileges, allowing controlled access to data even if Row Level Security is enabled.
+
+```sql
+CREATE OR REPLACE FUNCTION public.get_available_rooms(
+  check_in date,
+  check_out date,
+  guests int,
+  exclude_booking_id uuid
+)
+RETURNS TABLE (
+  id uuid,
+  name text,
+  description text,
+  capacity int,
+  price numeric,
+  amenities jsonb,
+  images jsonb,
+  created_at timestamptz
+)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+SELECT
+  r.id,
+  r.name,
+  r.description,
+  r.capacity,
+  r.price,
+  r.amenities,
+  r.images,
+  r.created_at
+FROM public.rooms AS r
+WHERE
+  r.capacity >= guests
+  AND NOT EXISTS (
+    SELECT 1
+    FROM public.bookings AS b
+    WHERE b.room_id::uuid = r.id
+      AND (exclude_booking_id IS NULL OR b.id != exclude_booking_id)
+      AND b.period && daterange($1, $2, '[)')
+  );
+$$;
+```
+
+Together, the 'exclusion constraint' prevents overlapping bookings at the database level, and the 'get_avaialble_rooms' function provides a safe way to query which rooms are free for a given date range.
+
+### Source attributions
+
+- https://dev.to/jhonoryza/sql-index-types-b-tree-hash-gist-gist-brin-and-gin-44g0
+- https://www.postgresql.org/docs/current/btree-gist.html
+- https://neon.com/blog/btree_gist
+- https://www.postgresql.org/docs/current/sql-createextension.html
+- https://stackoverflow.com/questions/61501301/partial-constraint-exclude-using-gist#61503531
+- https://www.postgresql.org/docs/current/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
+- https://supabase.com/docs/guides/database/functions
+- https://www.postgresql.org/docs/current/functions-range.html
+
+## Profiles table
+
+In Supabase, the built-in 'auth.users' table stores only basic authentication information, such as 'id', 'email', and password hashes. It does not include additional user information an app may need, like first name, last name, country, zip code, role, or Stripe customer ID.
+
+For this reason, it’s best practice to create a separate 'profiles' table that references 'auth.users' (https://supabase.com/docs/guides/auth/managing-user-data#storing-additional-user-information).
+
+Each profile row corresponds to one user and can store all app-specific fields.
+
+```sql
+CREATE TABLE IF NOT EXISTS public.profiles (
+    id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email text NOT NULL UNIQUE,
+    first_name text NOT NULL,
+    last_name text NOT NULL,
+    country text NOT NULL,
+    zip_code text NOT NULL,
+    role text DEFAULT 'guest',
+    created_at timestamptz DEFAULT now()
+);
+```
+
+The foreign key 'REFERENCES auth.users(id) ON DELETE CASCADE' ensures that when a user is deleted from 'auth.users', the corresponding profile is automatically removed, preventing orphaned rows.
+
+Supabase recommends using 'triggers' to automatically populate the 'profiles' table when new users sign up.
+
+This avoids manual insertion and ensures data consistency:
+
+```sql
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+    INSERT INTO public.profiles (
+        id,
+        email,
+        first_name,
+        last_name,
+        country,
+        zip_code
+    )
+    VALUES (
+        NEW.id,
+        NEW.email,
+        NEW.raw_user_meta_data->>'first_name',
+        NEW.raw_user_meta_data->>'last_name',
+        NEW.raw_user_meta_data->>'country',
+        NEW.raw_user_meta_data->>'zip_code'
+    )
+    ON CONFLICT (id) DO NOTHING;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
+CREATE TRIGGER on_auth_user_created
+AFTER INSERT ON auth.users
+FOR EACH ROW
+EXECUTE FUNCTION public.handle_new_user();
+```
+
+Row Level Security (RLS) policies are then applied to ensure users can only access or modify their own profile:
+
+```sql
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can select their own profile"
+ON public.profiles
+FOR SELECT
+USING (auth.uid() = id);
+
+CREATE POLICY "Users can update their own profile"
+ON public.profiles
+FOR UPDATE
+USING (auth.uid() = id)
+WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Users can delete their own profile"
+ON public.profiles
+FOR DELETE
+USING (auth.uid() = id);
+```
+
+Additionally, functions and triggers keep'auth.users' and 'profiles' synchronized whenever either is updated:
+
+```sql
+CREATE OR REPLACE FUNCTION public.sync_user_profile()
+RETURNS trigger AS $$
+BEGIN
+  UPDATE public.profiles
+  SET
+    email = NEW.email,
+    first_name = NEW.raw_user_meta_data->>'first_name',
+    last_name = NEW.raw_user_meta_data->>'last_name',
+    country = NEW.raw_user_meta_data->>'country',
+    zip_code = NEW.raw_user_meta_data->>'zip_code'
+  WHERE id = NEW.id;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER on_auth_user_updated
+AFTER UPDATE ON auth.users
+FOR EACH ROW
+WHEN (OLD IS DISTINCT FROM NEW)
+EXECUTE FUNCTION public.sync_user_profile();
+
+CREATE OR REPLACE FUNCTION public.sync_profile_to_auth()
+RETURNS trigger AS $$
+BEGIN
+  UPDATE auth.users
+  SET
+    email = NEW.email,
+    raw_user_meta_data = jsonb_build_object(
+      'first_name', NEW.first_name,
+      'last_name', NEW.last_name,
+      'country', NEW.country,
+      'zip_code', NEW.zip_code
+    )
+  WHERE id = NEW.id;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER on_profile_updated
+AFTER UPDATE ON public.profiles
+FOR EACH ROW
+WHEN (OLD IS DISTINCT FROM NEW)
+EXECUTE FUNCTION public.sync_profile_to_auth();
+```
+
+Additional column 'stripe_customer_id' was added later when Stripe payments were integrated:
+
+```sql
+ALTER TABLE profiles
+ADD COLUMN stripe_customer_id text;
+```
+
+Admin and user policies were implemented to grant different access levels:
+
+```sql
+CREATE OR REPLACE FUNCTION public.is_admin(uid uuid)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT role = 'admin'
+  FROM public.profiles
+  WHERE id = uid;
+$$;
+
+CREATE POLICY "Admins can select all profiles"
+ON public.profiles
+FOR SELECT
+USING (public.is_admin(auth.uid()));
+
+CREATE POLICY "Admins can delete any profile"
+ON public.profiles
+FOR DELETE
+USING (public.is_admin(auth.uid()));
+
+CREATE POLICY "Admins can update any profile"
+ON public.profiles
+FOR UPDATE
+USING (public.is_admin(auth.uid()))
+WITH CHECK (public.is_admin(auth.uid()));
+```
+
+This approach ensures secure, scalable, and maintainable user management, separating authentication from app-specific profile data.
+
+This method enables triggers, RLS policies, and admin/user distinctions, while keeping 'auth.users' untouched and fully compatible with Supabase’s auth system.
+
+### Source attributions
+
+- https://supabase.com/docs/guides/auth/managing-user-data
+- https://supabase.com/docs/guides/database/tables#referencing-authusers
+- https://supabase.com/docs/guides/auth/managing-user-data#using-triggers
+- https://supabase.com/docs/guides/auth/row-level-security
+- https://supabase.com/docs/guides/auth/row-level-security#policies
+- https://www.postgresql.org/docs/current/ddl-rowsecurity.html
+- https://www.postgresql.org/docs/current/plpgsql-trigger.html
+- https://www.postgresql.org/docs/current/functions-json.html
+- https://www.mysqltutorial.org/mysql-views/mysql-view-with-check-option/
+- https://www.postgresql.org/docs/current/sql-createfunction.-html#SQL-CREATEFUNCTION-SECURITY

@@ -68,30 +68,24 @@ const BookingFilterUI: React.FC<BookingFilterUIProps> = ({
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
       >
-        <Drawer
-          anchor="left"
-          open={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-        >
-          <Box
-            sx={{
-              width: {
-                xs: "80vw",
-                sm: "350px",
-                md: "380px",
-                lg: "400px",
-              },
+        <Box
+          sx={{
+            width: {
+              xs: "80vw",
+              sm: "350px",
+              md: "380px",
+              lg: "400px",
+            },
 
-              p: 2,
-            }}
-          >
-            <FilterBookingsCard
-              filters={filters}
-              setFilters={setFilters}
-              rooms={rooms}
-            />
-          </Box>
-        </Drawer>
+            p: 2,
+          }}
+        >
+          <FilterBookingsCard
+            filters={filters}
+            setFilters={setFilters}
+            rooms={rooms}
+          />
+        </Box>
       </Drawer>
     </>
   );
