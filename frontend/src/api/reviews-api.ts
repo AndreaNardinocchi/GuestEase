@@ -20,8 +20,15 @@ export const submitReview = async (payload: {
   comment: string;
 }) => {
   const { booking_id, rating, comment } = payload;
+  // Retrieving the user object
+  const user = await getUserProfile(payload.user_id);
+  // We now create the reviewer_name variable to insert along with the above payload
+  // This is a bug fix as the logout status would not show the reviewer name othrwise
+  const reviewer_name =
+    `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim();
   const { error } = await supabase.from("reviews").insert({
     ...payload,
+    reviewer_name,
     created_at: new Date(),
   });
   if (error) throw new Error(error.message);
@@ -29,7 +36,6 @@ export const submitReview = async (payload: {
   // Retrieving all objects needed for the email parameters
   const room = await getRoomById(payload.room_id);
   const booking = await getBookingById(payload.booking_id);
-  const user = await getUserProfile(payload.user_id);
 
   // Fetching the GuestEase logo from the Supabase storage
   const logoUrl = getPublicUrl("GuestEaseLogo.png");
@@ -63,23 +69,17 @@ export const submitReview = async (payload: {
 };
 
 /**
- * This is a helper to get all reviews of a specific room, which also
- * create a 'join' with the profiles table through 'profile as a foreign key
- * constraint.
- * https://supabase.com/docs/guides/database/joins-and-nesting?queryGroups=language&language=js
+ * This is a helper to get all reviews of a specific room
  */
 export const getRoomReviews = async (roomId: string) => {
   const { data, error } = await supabase
     .from("reviews")
     .select(
-      `
-      *,
-      profile:profiles (
-        first_name,
-        last_name
-      )
-    `,
+      ` *,
+    reviewer_name
+        `,
     )
+
     .eq("room_id", roomId)
     .order("created_at", { ascending: false });
 
@@ -88,14 +88,11 @@ export const getRoomReviews = async (roomId: string) => {
 
   /**
    * We then 'return' a 'map' of 'guestname' which is nothing but
-   * the combination of the first and last name's guest
+   * the reviewer_name column from the 'reviews' table
    */
-  return data.map((review: any) => {
-    const first = review.profile?.first_name || "";
-    const last = review.profile?.last_name || "";
 
-    const guestName = (first + " " + last).trim() || "Guest";
-    // We then, return, the review object through the stread operator and add the new field 'guestName'
+  return data.map((review: any) => {
+    const guestName = review.reviewer_name || "Guest";
     return { ...review, guestName };
   });
 };

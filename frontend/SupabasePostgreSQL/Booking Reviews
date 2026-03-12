@@ -39,3 +39,22 @@ ADD CONSTRAINT reviews_user_id_fkey
 FOREIGN KEY (user_id)
 REFERENCES profiles(id)
 ON DELETE CASCADE;
+
+-- Anyone can read visible reviews
+create policy "public can read visible reviews"
+on public.reviews
+for select
+using (visibility_status = 'visible');
+
+-- Only logged‑in users can create reviews
+create policy "authenticated users can create reviews"
+on public.reviews
+for insert
+to authenticated
+with check (true);
+
+
+-- Store the reviewer's display name directly on each review so it can be shown publicly without joining the profiles table.
+alter table reviews add column reviewer_name text;
+
+
