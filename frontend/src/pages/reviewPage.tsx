@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   Box,
   Container,
@@ -125,6 +125,14 @@ const ReviewPage: React.FC = () => {
       },
     );
   };
+
+  /**
+   * This is the browser title
+   * https://stackoverflow.com/questions/46160461/how-do-you-set-the-document-title-in-react?
+   */
+  useEffect(() => {
+    document.title = `${room?.name}'s review | GuestEase`;
+  });
 
   if (isLoading) {
     return (

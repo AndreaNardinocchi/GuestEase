@@ -2356,23 +2356,17 @@ which, in its React Query call, makes use of the 'getRoomReviews()' function in 
 
 ```ts
 /**
- * This is a helper to get all reviews of a specific room, which also
- * create a 'join' with the profiles table through 'profile as a foreign key
- * constraint.
- * https://supabase.com/docs/guides/database/joins-and-nesting?queryGroups=language&language=js
+ * This is a helper to get all reviews of a specific room
  */
 export const getRoomReviews = async (roomId: string) => {
   const { data, error } = await supabase
     .from("reviews")
     .select(
-      `
-      *,
-      profile:profiles (
-        first_name,
-        last_name
-      )
-    `,
+      ` *,
+    reviewer_name
+        `,
     )
+
     .eq("room_id", roomId)
     .order("created_at", { ascending: false });
 
@@ -2381,14 +2375,11 @@ export const getRoomReviews = async (roomId: string) => {
 
   /**
    * We then 'return' a 'map' of 'guestname' which is nothing but
-   * the combination of the first and last name's guest
+   * the reviewer_name column from the 'reviews' table
    */
-  return data.map((review: any) => {
-    const first = review.profile?.first_name || "";
-    const last = review.profile?.last_name || "";
 
-    const guestName = (first + " " + last).trim() || "Guest";
-    // We then, return, the review object through the stread operator and add the new field 'guestName'
+  return data.map((review: any) => {
+    const guestName = review.reviewer_name || "Guest";
     return { ...review, guestName };
   });
 };
@@ -4567,7 +4558,7 @@ export const useSubmitReview = () => {
 };
 ```
 
-The above hook submits the review via the 'submitReview()' API function in the **review-api.ts** file in which we create a review payload, which will thwn be used to insert the newly created 'review' into the Supabase table 'reviews'. The rest of the variables are created to populate the email notification that will be sent off to the admin email, so that the admin is informed.
+The above hook submits the review via the 'submitReview()' API function in the **review-api.ts** file in which we create a review payload, which will then be used to insert the newly created 'review' into the Supabase table 'reviews'. The rest of the variables are created to populate the email notification that will be sent off to the admin email, so that the admin is informed.
 
 ```ts
 /**
@@ -4584,8 +4575,15 @@ export const submitReview = async (payload: {
   comment: string;
 }) => {
   const { booking_id, rating, comment } = payload;
+  // Retrieving the user object
+  const user = await getUserProfile(payload.user_id);
+  // We now create the reviewer_name variable to insert along with the above payload
+  // This is a bug fix as the logout status would not show the reviewer name otherwise
+  const reviewer_name =
+    `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim();
   const { error } = await supabase.from("reviews").insert({
     ...payload,
+    reviewer_name,
     created_at: new Date(),
   });
   if (error) throw new Error(error.message);
@@ -4593,7 +4591,6 @@ export const submitReview = async (payload: {
   // Retrieving all objects needed for the email parameters
   const room = await getRoomById(payload.room_id);
   const booking = await getBookingById(payload.booking_id);
-  const user = await getUserProfile(payload.user_id);
 
   // Fetching the GuestEase logo from the Supabase storage
   const logoUrl = getPublicUrl("GuestEaseLogo.png");
@@ -8350,3 +8347,664 @@ This method enables triggers, RLS policies, and admin/user distinctions, while k
 - https://www.postgresql.org/docs/current/functions-json.html
 - https://www.mysqltutorial.org/mysql-views/mysql-view-with-check-option/
 - https://www.postgresql.org/docs/current/sql-createfunction.-html#SQL-CREATEFUNCTION-SECURITY
+
+## function check_email_exists
+
+This PostgreSQL function checks if an email already exists in Supabase’s authentication table 'auth.users'.
+
+It is called from my 'SignUpPage.tsx' before creating a new user
+
+```ts
+    try {
+      /**
+       * We introduced an existing email check through a supabase PostgreSQL function.
+       */
+      const { data: emailExists } = await supabase.rpc("check_email_exists", {
+        email_input: email,
+      });
+
+      if (emailExists) {
+        setRejectionMessage(
+          "This email is already registered. Please, use a different email, thank you!",
+        );
+        return;
+      }
+```
+
+The function is defined as:
+
+```sql
+create or replace function check_email_exists(email_input text)
+-- This boolean will return true or false based on the outcome of
+--     select 1 from auth.users where email = email_input
+-- https://www.postgresql.org/docs/current/sql-createfunction.html#SQL-CREATEFUNCTION-SECURITY
+returns boolean
+language sql
+-- security definer allows this function to access 'auth.users'
+security definer
+```
+
+'email_input' is the email passed into the function, and 'returns boolean' means the result will be either 'true' or 'false'.
+
+'security definer' is important because normal client queries cannot access 'auth.users'. This setting allows the function to run with the permissions of the function owner, so it can safely read from that table.
+
+The function body runs this query:
+
+```sql
+as $$
+-- This checks whether the email inputted by the user on the SignUpPage
+-- already 'exists' in the auth.users
+-- https://www.postgresql.org/docs/current/functions-subquery.html#FUNCTIONS-SUBQUERY-EXISTS
+  select exists (
+    select 1 from auth.users where email = email_input
+  );
+$$;
+```
+
+'select 1 from auth.users where email = email_input' checks for rows where the email matches the input. 'exists()' then converts that result into a boolean.
+
+If a matching email is found:
+
+```sql
+true
+```
+
+If no matching email exists:
+
+```sql
+false
+```
+
+So the function simply provides a secure yes/no check to see if an email is already registered before allowing signup.
+
+### Sources attributions
+
+- https://www.postgresql.org/docs/current/sql-createfunction.html#SQL-CREATEFUNCTION-
+- https://www.postgresql.org/docs/current/functions-subquery.html#FUNCTIONS-SUBQUERY-EXISTS
+
+## user_payment_methods
+
+This table is needed to store users’ saved payment methods when integrating Stripe’s SetupIntent flow.
+
+Instead of charging a card immediately, the application securely stores the Stripe payment_method_id so the card can be charged later (for example, within 24 hours of check-in).
+
+The database only stores non-sensitive card metadata such as brand and last four digits, while the full card details remain securely handled by Stripe.
+
+```sql
+DROP TABLE IF EXISTS user_payment_methods;
+
+-- We create a table for users' payment methods since we are implementing the setupIntent method
+-- and users cards will only be chard within 24h from check-in
+-- https://docs.stripe.com/api/payment_methods/object#payment_method_object-card
+create table user_payment_methods (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  payment_method_id text not null,
+  brand text,
+  last4 text,
+  exp_month integer,
+  exp_year integer,
+  is_default boolean default false,
+  created_at timestamp default now()
+);
+```
+
+Example of a Json row
+
+```json
+[
+  {
+    "idx": 0,
+    "id": "05300443-6b9c-48a3-9877-e8d2fd9ee11e",
+    "user_id": "446089d9-6a7e-4a2c-8b2b-3af190c87f0f",
+    "payment_method_id": "pm_1T6Va0Gi6NYaGS4Mb4XgyPRL",
+    "brand": "visa",
+    "last4": "4242",
+    "exp_month": 11,
+    "exp_year": 2030,
+    "is_default": true,
+    "created_at": "2026-03-02 12:28:10.729589"
+  }
+]
+```
+
+### Source attributions
+
+- https://docs.stripe.com/api/payment_methods/object#payment_method_object-card
+
+## function get_all_bookings
+
+The frontend function and the database function work together to retrieve all bookings along with the user information for the admin dashboard.
+
+In the database, the function 'get_all_bookings' is created to return booking records joined with user data.
+
+It selects booking fields from the 'bookings' table and joins them with 'auth.users' using the 'user_id'. This allows additional information like the user’s email, first name, and last name (stored in 'raw_user_meta_data') to be returned together with the booking details.
+
+```sql i
+create function public.get_all_bookings()
+returns table (
+  id uuid,
+  room_id text,
+  user_id uuid,
+  user_email text,
+  first_name text,
+  last_name text,
+  check_in date,
+  check_out date,
+  guests int,
+  total_price numeric,
+  created_at timestamptz,
+  charged boolean
+)
+```
+
+The function query joins the two tables:
+
+```sql
+from public.bookings b
+left join auth.users u
+on b.user_id = u.id;
+```
+
+This 'left join' ensures that every booking is returned even if user information is missing (user can delete their profile if they only have past bookings).
+
+The function also uses 'security definer' so it can access 'auth.users', which is normally restricted in Supabase.
+
+On the frontend, the React Query fetcher calls this database function using Supabase RPC in **guestease-api.ts**
+
+```ts
+/**
+ * React Query Fetchers
+ * We fetch all bookings through the rpc 'get_all_bookings' which is a function
+ * that joined the bookings table with the auth.users so that the admin will be
+ * able to see all the users' bookings.
+ * */
+export const getAllBookings = async (): Promise<BookingWithUser[]> => {
+  const { data, error } = await supabase.rpc("get_all_bookings");
+  if (error) throw error;
+  return data || [];
+};
+```
+
+'supa​base.rpc("get_all_bookings")' executes the database function and returns the rows it produces. The function then checks for errors and returns the result as an array of 'BookingWithUser' objects.
+
+Together, the database function handles the complex join between bookings and users, while the frontend fetcher simply calls it and returns the data for use in the admin interface.
+
+## Booking Reviews table
+
+This SQL script sets up a 'reviews' table schema.
+
+It stores ratings and comments for rooms they booked, ensures data integrity with constraints, and adjusts the foreign key so reviews can easily join with the `profiles` table in Supabase.
+
+```sql
+DROP TABLE IF EXISTS public.reviews;
+CREATE TABLE IF NOT EXISTS reviews (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  booking_id UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+  rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  comment TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  visibility_status TEXT DEFAULT 'visible',
+  CONSTRAINT one_review_per_booking UNIQUE (booking_id)
+);
+```
+
+Each review gets a unique UUID automatically.
+
+The table links reviews to a 'booking', 'user', and 'room' through foreign keys. 'ON DELETE CASCADE' ensures related reviews are removed if the booking (but actually reviews can only be submitted for a past booking which can never be deleted in this app system), user, or room is deleted.
+
+A 'CHECK' constraint forces ratings to stay between 1 and 5, a timestamp records when the review was created, and the 'UNIQUE (booking_id)' constraint guarantees that each booking can only have one review.
+
+```sql
+-- Remove the existing foreign key on reviews.user_id if it exists.
+-- Previously, user_id referenced auth.users(id), which prevented clean joins
+-- with the profiles table.
+ALTER TABLE reviews
+DROP CONSTRAINT IF EXISTS reviews_user_id_fkey;
+
+-- Re‑add the foreign key so that:
+-- reviews.user_id references profiles.id
+-- profiles.id is a 1:1 mirror of auth.users.id (kept in sync via triggers)
+-- However, profiles is the correct table to join against in Supabase (auth.users is not)
+-- This makes it possible to fetch reviewer names with:
+-- .select("*, profile:profiles(first_name, last_name)") in the useRoomReviews.ts hook
+-- ON DELETE CASCADE ensures that if a profile is deleted,
+-- all associated reviews are automatically removed.
+ALTER TABLE reviews
+ADD CONSTRAINT reviews_user_id_fkey
+FOREIGN KEY (user_id)
+REFERENCES profiles(id)
+ON DELETE CASCADE;
+```
+
+This section changes the foreign key relationship for 'user_id'. Instead of referencing 'auth.users', it now references 'profiles.id'.
+
+In Supabase, 'profiles' usually mirrors 'auth.users' and contains user details like names, email, and so on and so forth, making it easier to fetch reviewer information in queries (e.g., joining reviews with profile data).
+
+A note about the 'ON DELETE CASCADE' which was added just to ensure that a user profile is ubiquitously removed for privacy purposes, but this is potentially a moot point.
+
+```sql
+-- Store the reviewer's display name directly on each review so it can be shown publicly without joining the profiles table.
+ALTER TABLE reviews ADD COLUMN reviewer_name TEXT;
+```
+
+Finally, this adds a 'reviewer_name' column so the reviewer’s name can be stored directly in the 'reviews' table if needed. This was done to enable loggedout users to still be able to see the reviewer names, which are otherwise not exposed based on the RLS policies to avoid exposing other sensitive data.
+
+# Supabase Edge Functions
+
+Supabase Edge Functions are server-side functions that run on Supabase’s edge network for fast execution.
+They run backend logic such as APIs, webhooks, and secure tasks.
+
+## charge-upcoming-bookings
+
+This code is a **Supabase Edge Function** written in TypeScript that runs on Supabase’s edge infrastructure using [Deno](https://deno.com/) (Deno is the open-source JavaScript runtime for the modern web.).
+
+Its purpose is to automatically charge users for bookings '24 hours before check-in', update the booking in the database, and send a confirmation email after a successful payment.
+
+The function begins by importing the required runtime types and dependencies. The Edge runtime import allows the code to run in Supabase’s server environment, while other imports provide access to the Supabase database client, the Stripe payment SDK, and an email template used after successful payment.
+
+```ts
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
+import Stripe from "npm:stripe@12.0.0";
+```
+
+A Supabase client is then created using environment variables. The service role key is used because the function runs on the server and needs full access to the database.
+
+```ts
+const supabase = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+);
+```
+
+A Stripe client is also initialized using the secret Stripe API key so the function can create payments.
+
+```ts
+const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
+  apiVersion: "2023-10-16",
+});
+```
+
+The main logic runs inside the server handler. The function is triggered automatically by a scheduled cron job which calls the Edge Function at regular intervals. The execution history of this scheduled trigger can be viewed at https://console.cron-job.org/jobs/7220668/history.
+
+```ts
+/**
+ * Main server handler which runs automatically on schedule or invocation.
+ * https://deno.com/deploy/docs/runtime-fs#denoserve
+ */
+Deno.serve(async () => {
+  try {
+    const now = new Date();
+    const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    console.log("Charge job started at", now.toISOString());
+
+    /**
+     * A fix that was needed:
+     * check_in is a DATE column, not a TIMESTAMP.
+     * We must compare date to date, otherwise bookings on the same day
+     * (e.g. check_in = "2026-02-14") won't match when cron https://console.cron-job.org/jobs/7220668/history
+     * runs later in the day.
+     * https://stackoverflow.com/questions/47066555/remove-time-after-converting-date-toisostring#55231024
+     */
+    const today = now.toISOString().split("T")[0];
+    const tomorrow = in24h.toISOString().split("T")[0];
+```
+
+It then queries the 'bookings' table to retrieve bookings that are checking in soon and have not yet been charged.
+
+```ts
+/**
+ * 1. Fetch bookings with check-in within the next 24 hours
+ *    ans not yet charged.
+ * https://supabase.com/docs/reference/javascript/select
+ * Compare DATE strings instead of timestamps
+ * Limit to 5 booking to avoid Supabase EarlyDrop timeouts
+ */
+const { data: bookings, error } = await supabase
+  .from("bookings")
+  .select("*")
+  .lte("check_in", tomorrow)
+  .gte("check_in", today)
+  .eq("charged", false)
+  .limit(5);
+```
+
+For each booking, the function retrieves the user’s Stripe customer ID and contact details from the 'profiles' table.
+
+```ts
+   const results = [];
+
+    // For any booking we run the below
+    for (const booking of bookings) {
+      try {
+        /**
+         * 2. Retrieve the user's Stripe customer ID + email + full name.
+         */
+        const { data: user, error: userError } = await supabase
+          .from("profiles")
+          .select("stripe_customer_id, first_name, last_name, email")
+          .eq("id", booking.user_id)
+          .single();
+
+```
+
+The user’s default payment method is then retrieved from the 'user_payment_methods' table.
+
+```ts
+if (userError || !user?.stripe_customer_id) {
+  // We push the below error to the list of results
+  results.push({
+    booking_id: booking.id,
+    status: "failed",
+    error: "User has no stripe_customer_id",
+  });
+  continue;
+}
+
+/**
+ * Otherwise, we retrieve the 'payment_method_id' from the Supabase 'user_payment_methods' table
+ * of the booking user
+ */
+const { data: pm } = await supabase
+  .from("user_payment_methods")
+  .select("payment_method_id")
+  .eq("user_id", booking.user_id)
+  .eq("is_default", true)
+  .single();
+```
+
+A Stripe payment intent is created to charge the user for the booking amount. The amount is multiplied by 100 because Stripe requires values in cents.
+
+```ts
+/**
+ * 3. Create a Stripe Payment Intent to charge the user.
+ * https://docs.stripe.com/api/payment_intents/create
+ * Convert total_price (string) to number
+ */
+const paymentIntent = await stripe.paymentIntents.create(
+  {
+    amount: Number(booking.total_price) * 100,
+    currency: "eur",
+    customer: user.stripe_customer_id,
+    payment_method: pm.payment_method_id,
+    // 'confirm: true' is uded to immediately charge the payment method.
+    // https://stripe.com/docs/payments/payment-intents/quickstart#confirm
+    // https://docs.stripe.com/payments/accept-a-payment-synchronously
+    confirm: true,
+    // 'off_session: true' tells Stripe the customer is not present, allowing
+    // background/automatic charges without 3D Secure prompts.
+    // This is needed fro cron https://console.cron-job.org/jobs/7220668/history
+    // https://support.stripe.com/questions/what-is-the-difference-between-on-session-and-off-session-and-why-is-it-important
+    off_session: true,
+    description: `Booking ${booking.id} charge`,
+  },
+  {
+    // Ensures the same booking cannot be charged twice
+    // https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Idempotency-Key
+    idempotencyKey: booking.id,
+  },
+);
+```
+
+After a successful payment, the booking is updated in the database to mark it as charged and store the Stripe payment ID.
+
+```ts
+/**
+ * 4. Mark booking as charged, and fill the 'payment_intent_id', and
+ * the 'amount' columns in the 'bookings' table
+ */
+await supabase
+  .from("bookings")
+  .update({
+    charged: true,
+    payment_intent_id: paymentIntent.id,
+    amount: Number(booking.total_price),
+  })
+  .eq("id", booking.id);
+```
+
+Finally, the function sends a confirmation email to the user using the Resend API and the HTML template.
+
+```ts
+  /**
+         * 5. Send GuestEase confirmation email about the successful payment
+         * 24h from check_in
+         */
+
+        // Retrieving the Resend key
+        const resendKey = Deno.env.get("RESEND_API_KEY");
+        if (!resendKey) {
+          console.error("Missing RESEND_API_KEY");
+        } else {
+          // Generate HTML for the email stored in paymentSuccessTemplate.ts
+          const html = paymentSuccessTemplate({ user, booking });
+
+          // Send email directly via Resend
+          const emailRes = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${resendKey}`,
+            },
+            body: JSON.stringify({
+              to: user.email,
+              from: "onboarding@resend.dev",
+              subject: "Your payment was successful!",
+              html,
+            }),
+          });
+
+          const emailText = await emailRes.text();
+          console.log("EMAIL RESPONSE:", emailText);
+
+          if (!emailRes.ok) {
+            console.error("Email failed:", emailText);
+          }
+        }
+
+        // Add this booking’s successful charge result to the overall cron run output.
+        // The `results` array is returned at the end of the job for logging/monitoring.
+        results.push({
+          booking_id: booking.id,
+          status: "charged",
+          stripe_payment_intent: paymentIntent.id,
+        });
+      } catch (err: any) {
+        console.error("Error charging booking", booking.id, err);
+        results.push({
+          booking_id: booking.id,
+          status: "failed",
+          error: err.message,
+        });
+      }
+    }
+
+    console.log("Charge job finished with results:", results);
+
+    // Return the full list of per‑booking results as the JSON response
+    // for this cron run (used for logs, debugging, and monitoring).
+    return new Response(JSON.stringify({ results }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (err: any) {
+    console.error("Fatal error in charge job:", err);
+    return new Response(JSON.stringify({ fatal_error: err.message }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+});
+
+```
+
+The function returns a JSON response listing the results for each booking processed during the run.
+
+![alt text](image-64.png)
+
+### Source attributions
+
+- https://supabase.com/docs/guides/functions
+- https://supabase.com/docs/reference/javascript
+- https://stripe.com/docs/api
+- https://stripe.com/docs/api/versioning
+- https://dev.to/4thzoa/stripe-node-with-deno-1fc4
+- https://deno.com/deploy/docs/runtime-fs#denoserve
+- https://stackoverflow.com/questions/47066555/remove-time-after-converting-date-toisostring#55231024
+- https://console.cron-job.org/jobs/7220668/history
+- https://supabase.com/docs/reference/javascript/select
+- https://docs.stripe.com/api/payment_intents/create
+- https://stripe.com/docs/payments/payment-intents/quickstart#confirm
+- https://docs.stripe.com/payments/accept-a-payment-synchronously
+- https://support.stripe.com/questions/what-is-the-difference-between-on-session-and-off-session-and-why-is-it-important
+- https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Idempotency-Key
+
+## leave-a-review-function
+
+The purpose of this function is to automatically send review request emails to users on the day their booking ends, encouraging them to leave feedback about their stay.
+
+The function starts by importing the Supabase Edge runtime types so the code can run in the Supabase edge environment. It also imports a custom 'leaveReviewTemplate' which generates the HTML email asking the user to leave a review.
+
+```ts
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { leaveReviewTemplate } from "./leaveReviewTemplate.ts";
+```
+
+The Supabase JavaScript client is then imported so the function can query the database.
+
+```ts
+import { createClient } from "jsr:@supabase/supabase-js@2";
+```
+
+A Supabase client is created using environment variables. The 'SUPABASE_SERVICE_ROLE_KEY' is used because the function runs server-side and needs permission to read booking and user data securely.
+
+```ts
+const supabase = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+);
+```
+
+The main logic runs inside the server handler. This function is triggered automatically by a scheduled cron job which calls the Edge Function at regular intervals.
+
+![alt text](image-65.png)
+
+The function gets the current date and converts it into a DATE string format. This is necessary because the 'check_out' column in the database is stored as a 'DATE`', not a timestamp.
+
+```ts
+/**
+ * Main server handler which runs automatically on schedule or invocation.
+ * https://deno.com/deploy/docs/runtime-fs#denoserve
+ */
+Deno.serve(async () => {
+  try {
+    const now = new Date();
+    console.log("Charge job started at", now.toISOString());
+
+    /**
+     * A fix that was needed:
+     * check_in is a DATE column, not a TIMESTAMP.
+     * We must compare date to date, otherwise bookings on the same day
+     * (e.g. check_in = "2026-02-14") won't match when cron https://console.cron-job.org/jobs/7220668/history
+     * runs later in the day.
+     * https://stackoverflow.com/questions/47066555/remove-time-after-converting-date-toisostring#55231024
+     */
+    const today = now.toISOString().split("T")[0];
+```
+
+It then queries the 'bookings' table to find bookings where the check-out date is today, meaning the guest has just finished their stay.
+
+```ts
+/**
+ * 1. Fetch bookings with check-out today
+ * https://supabase.com/docs/reference/javascript/select
+ * Compare DATE strings instead of timestamps
+ * Limit to 5 bookings to avoid Supabase EarlyDrop timeouts
+ */
+const { data: bookings, error } = await supabase
+  .from("bookings")
+  .select("*")
+  .eq("check_out", today)
+  .limit(5);
+```
+
+For each booking returned, the function retrieves the user’s details from the 'profiles' table. This provides the guest’s name and email address for the review request.
+
+```ts
+
+        // For any booking we run the below
+    for (const booking of bookings) {
+      try {
+
+        // We fetch the user data that we are going to need to populate the email
+        const { data: user, error: userError } = await supabase
+          .from("profiles")
+          .select("first_name, last_name, email")
+          .eq("id", booking.user_id)
+          .single();
+```
+
+The function also retrieves the room name from the `rooms` table so the email can reference the specific room the guest stayed in.
+
+```ts
+const { data: room, error: roomError } = await supabase
+  .from("rooms")
+  .select("name")
+  .eq("id", booking.room_id)
+  .single();
+```
+
+Next, the function retrieves the **Resend API key** from environment variables. This key is required to send emails using the Resend email service.
+
+```ts
+// Retrieving the Resend key
+const resendKey = Deno.env.get("RESEND_API_KEY");
+```
+
+The HTML content for the email is then generated using the imported template.
+
+```ts
+// Generate HTML for the email stored in leaveReviewTemplate.ts
+const html = leaveReviewTemplate({ user, booking, room });
+```
+
+An email request is sent to the Resend API containing the recipient email, sender address, subject, and HTML content.
+
+```ts
+// Send email directly via Resend
+const emailRes = await fetch("https://api.resend.com/emails", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${resendKey}`,
+  },
+  body: JSON.stringify({
+    to: user.email,
+    from: "onboarding@resend.dev",
+    subject: `How was your stay in ${room.name} at GuestEase?`,
+    html,
+  }),
+});
+```
+
+The function logs the email response for debugging. If the email fails, an error message is logged.
+
+Finally, once all bookings have been processed, the function returns a JSON response indicating the job completed successfully.
+
+```ts
+return new Response(JSON.stringify({ status: "completed" }), {
+  return new Response(JSON.stringify({ status: "completed" }), {
+      headers: { "Content-Type": "application/json" },
+    });
+```
+
+### Source attributions
+
+- https://supabase.com/docs/guides/functions
+- https://supabase.com/docs/reference/javascript
+- https://deno.com/deploy/docs/runtime-fs#denoserve
+- https://console.cron-job.org/jobs/7220668/history
+- https://stackoverflow.com/questions/47066555/remove-time-after-converting-date-toisostring#55231024
+- https://supabase.com/docs/reference/javascript/select

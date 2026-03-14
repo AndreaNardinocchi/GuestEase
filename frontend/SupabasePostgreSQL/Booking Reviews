@@ -31,30 +31,15 @@ DROP CONSTRAINT IF EXISTS reviews_user_id_fkey;
 -- profiles.id is a 1:1 mirror of auth.users.id (kept in sync via triggers)
 -- However, profiles is the correct table to join against in Supabase (auth.users is not)
 -- This makes it possible to fetch reviewer names with:
--- .select("*, profile:profiles(first_name, last_name)") in the useRoomReviews.ts hook
+-- .select("*, profile:profiles(first_name, last_name)") in the useRoomReviews.ts hook (reviewer-api.ts) 
+-- (* The above line of comment is obsolete as the 'review-api.ts' file now has  .select(`*, reviewer_name`,) )
 -- ON DELETE CASCADE ensures that if a profile is deleted,
--- all associated reviews are automatically removed.
+-- all associated reviews are automatically removed (privacy moot point)
 ALTER TABLE reviews
 ADD CONSTRAINT reviews_user_id_fkey
 FOREIGN KEY (user_id)
 REFERENCES profiles(id)
 ON DELETE CASCADE;
 
--- Anyone can read visible reviews
-create policy "public can read visible reviews"
-on public.reviews
-for select
-using (visibility_status = 'visible');
-
--- Only logged‑in users can create reviews
-create policy "authenticated users can create reviews"
-on public.reviews
-for insert
-to authenticated
-with check (true);
-
-
 -- Store the reviewer's display name directly on each review so it can be shown publicly without joining the profiles table.
 alter table reviews add column reviewer_name text;
-
-
