@@ -69,7 +69,7 @@ router.post("/admin/cancel-booking", async (req, res) => {
       const today = new Date();
 
       // If today bigger than check-out, it means the check-out is in
-      // the past. No refund posible.
+      // the past. No refund possible.
       if (today >= checkOut) {
         return res
           .status(400)

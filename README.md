@@ -4,7 +4,7 @@ GuestEase is a modern booking platform built for small hospitality businesses su
 The frontend is developed with **React**, **TypeScript**, and **Vite**, styled with **Material UI**, and powered by **React Router** and **React Query** for smooth navigation and real‑time data handling.  
 A lightweight **Node.js + Express** backend manages secure server‑side operations, including admin‑level booking updates, validation, and service‑role Supabase actions.
 The platform uses **Supabase PostgreSQL** for its database, **Supabase Auth** for secure user authentication, **Supabase Storage** for media handling, and **Row‑Level Security (RLS)** for strict access control.  
-Background tasks such as scheduled booking checks and email triggers may run via **Cron‑job.org**, while **Stripe** handles payments and **Resend** delivers transactional emails.
+Background tasks such as scheduled booking checks and email triggers may run via **Cron‑job.org** and **Supabase Edge Functions**, while **Stripe** handles payments and **Resend** delivers transactional emails.
 GuestEase is deployed using modern cloud tooling: the **frontend on Vercel** for fast global delivery and the **backend on Render** for reliable API hosting.  
 Together, these technologies create a fast, secure, and user‑friendly booking experience designed for comfort and simplicity.
 
@@ -24,6 +24,7 @@ Together, these technologies create a fast, secure, and user‑friendly booking 
 - Admin‑level room, user, and booking management
 - Secure backend endpoints for sensitive operations
 - Real‑time updates powered by Supabase
+- Stripe payments
 
 ## Dependencies/Library installations commands
 
@@ -49,9 +50,9 @@ Together, these technologies create a fast, secure, and user‑friendly booking 
 
 **GuestEase** is a full-stack web app that helps small hospitality businesses manage bookings efficiently. It replaces manual reservations and OTAs with an easy-to-use platform where guests book online and admins manage rooms, pricing, and reservations via a secure dashboard.
 
-The user will aslo be able to manage their profile via a complete CRUD stack, and, above all, their reservations. The bookings are finalized after the user successfully entries their credit card details through a Stripe Check out modal, which will also generate a payment method id associated to the user.
+The user will also be able to manage their profile via a complete CRUD stack, and, above all, their reservations. The bookings are finalized after the user successfully entries their credit card details through a Stripe Check out modal, which will also generate a payment method id associated to the user.
 
-The payment process will also processed through 2 distinct flows: [Setup Intents](https://docs.stripe.com/api/setup_intents) (through which the app sets up and saves a user's payment method for future use), and [Payment Intents](https://docs.stripe.com/api/payment_intents) (through which the payment is collected).
+The payment process will also be processed through 2 distinct flows: [Setup Intents](https://docs.stripe.com/api/setup_intents) (through which the app sets up and saves a user's payment method for future use), and [Payment Intents](https://docs.stripe.com/api/payment_intents) (through which the payment is collected).
 
 # Why the project is useful
 
@@ -65,11 +66,11 @@ Last, but not least, guests will have the chance to add a review for their stay.
 Admins, instead, can not only create, read, update, and delete users' bookings if they receive such requests from them, but they do also have the same CRUD powers for user profiles and rooms.
 Lastly, they can also read all reviews for all bookings and receive email notifications for users' bookings and reviews.
 
-All of the above, makes GuestEase a powerful app to get full control of a small hospitality booking system, with end‑to‑end solution for managing a small hospitality operation providing convenience for guests, efficiency for administrators, and a modern digital experience that enhances the overall stay.
+All of the above makes GuestEase a powerful app to get full control of a small hospitality booking system, with end‑to‑end solution for managing a small hospitality operation providing convenience for guests, efficiency for administrators, and a modern digital experience that enhances the overall stay.
 
 This project was also a personal learning journey. With a background in Tourism Science and experience in Marriott Digital Operations, I wanted to understand how a hospitality booking system works behind the scenes.
 
-GuestEase became a way to explore that process hands‑on, from system architecture to real booking flows, while building a practical tool for small accommodation providers. A future and ambitious goal could be that of scaling it up in a future development phase in order to turn it into a platform/hub serving multiple hospitality businesses at once.
+GuestEase became a way to explore that process hands‑on, from **system architecture** to real **booking flows**, while building a practical tool for small accommodation providers. A future and ambitious goal could be that of scaling it up in a future development phase in order to turn it into a platform/hub serving multiple hospitality businesses at once.
 
 # How users can get started with the project
 
@@ -104,24 +105,24 @@ If the 'mobileAnchorEl' is set to 'null', then, the hamburger dropdown menu will
 
 ![alt text](image-4.png)
 
-Furthermore, we have plugged in a profile drawer \*\*components/userProfileDrawer/userProfileDrawer.tsx that will open when the user clicks on the 'Welcome User' link on the top right of the menu. To acheieve this, we created the below boolean state set to 'false' for convenience (the drawer should always be closed unless prompted to open):
+Furthermore, we have plugged in a profile drawer **components/userProfileDrawer/userProfileDrawer.tsx** that will open when the user clicks on the 'Welcome User' link on the top right of the menu. To achieve this, we created the below boolean state set to 'false' for convenience (the drawer should always be closed unless prompted to open):
 
-```
-
-  /**
-   * 'drawerOpen' state has been set for the logged in user state. The reason behind that is
-   * that to manage the open/close state of the UserProfileDrawer,
-   * a side panel (also known as a drawer) that slides in from the edge of the screen, a boolean
-   * state variable that tracks whether the drawer is currently visible (true) or hidden (false)
-   * was needed
-   */
-  const [drawerOpen, setDrawerOpen] = useState(false);
-
+```ts
+/**
+ * 'drawerOpen' state has been set for the logged in user state. The reason behind that is
+ * that to manage the open/close state of the UserProfileDrawer,
+ * a side panel (also known as a drawer) that slides in from the edge of the screen, a boolean
+ * state variable that tracks whether the drawer is currently visible (true) or hidden (false)
+ * was needed
+ */
+const [drawerOpen, setDrawerOpen] = useState(false);
 ```
 
 At that point, when a Supabase user authentication 'token' exists, hence the user is authenticated and loggedin, and the user clicks on the Welcome User menu link, the drawerOpen is set to 'true' and the userProfileDrawer component will slide in:
 
-```
+![alt text](image-66.png)
+
+```ts
   {token ? (
                   <MenuItem
                     onClick={() => {
@@ -140,22 +141,21 @@ At that point, when a Supabase user authentication 'token' exists, hence the use
 
 ```
 
-We, of course, wouldn't have been able to achieve such a behaviour hadn't we first set up a **useContext.tsx** hook to read values from our **AuthContext.tsx** hook. If we get a token, then, the user is authenticated via 'Supabase'. The 'user' contains the firstName that we will name 'userName' here, which will be used to set up the below local state:
+We, of course, wouldn't have been able to achieve such a behaviour hadn't we first set up a **context/useContext.tsx** hook to read values from our **context/AuthContext.tsx** hook. If we get a token, then, the user is authenticated via 'Supabase'. The 'user' contains the firstName that we will name 'userName' here, which will be used to set up the below local state:
 
-```
-  // Created a useState for userName so that we can set it as a user logs in
-  const [userName, setUserName] = useState("User");
+```ts
+// Created a useState for userName so that we can set it as a user logs in
+const [userName, setUserName] = useState("User");
 
-  const { token, user } = useContext(AuthContext) || {};
+const { token, user } = useContext(AuthContext) || {};
 
-  useEffect(
-    () => {
-      // You can remove this or set it from somewhere else if needed
-      setUserName(user?.first_name ?? "User");
-    }, // Run this effect every time `token` changes ensuring the 'userFirstName' is up-to-date
-    [token, user],
-  );
-
+useEffect(
+  () => {
+    // We can remove this or set it from somewhere else if needed
+    setUserName(user?.first_name ?? "User");
+  }, // Run this effect every time `token` changes ensuring the 'userFirstName' is up-to-date
+  [token, user],
+);
 ```
 
 This is shown in the UI (like “Welcome, User!”) until it gets updated with real data when 'userName' gets updated and a token changes through the useEffect() hook.
@@ -172,7 +172,7 @@ This useEffect runs when the component mounts, and any time a user or a token ch
 - https://mui.com/material-ui/react-menu/
 - https://css-tricks.com/css-link-hover-effects/
 - https://mui.com/material-ui/customization/how-to-customize/#pseudo-classes
-- https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/- startsWith
+- https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/-startsWith
 - https://api.reactrouter.com/v7/functions/react_router.useNavigate.html
 - https://reactnavigation.org/docs/use-theme/
 - https://mui.com/material-ui/api/menu/#props
@@ -180,7 +180,7 @@ This useEffect runs when the component mounts, and any time a user or a token ch
 
 ## User Profile Drawer
 
-This UserProfileDrawer/index.tsx component implements a slide-in panel that displays the current user's profile information. It accepts two props from the parent component:
+This **components/userProfileDrawer/userProfileDrawer.tsx** component implements a slide-in panel that displays the current user's profile information. It accepts two props from the parent component:
 
 - 'open', which is a 'boolean' that controls whether the drawer is visible
 - 'onClose', which is a function that closes the drawer.
@@ -189,7 +189,7 @@ This UserProfileDrawer/index.tsx component implements a slide-in panel that disp
 
 Inside the component, React's **useContext** is used to access the authenticated user object and, hence, data from the **AuthContext.tsx** component, but, also, to handle the signout(). However, we, then, fetch the user first name, last name and other data we need to populate the drawer from the Supabase 'profiles' table. The profiles rows contained in this table https://supabase.com/dashboard/project/xxxxxxxxxxxx/editor/35435?schema=public are user data perfectly in sync with the user data found in the Supabase authentication section in https://supabase.com/dashboard/project/xxxxxxxxxxxxxxxxx/auth/users.
 
-As a matter of fact, Supabase recommends creating a 'profiles' table to fetch user data ('For security, the Auth schema is not exposed in the auto-generated API. If you want to access users data via the API, you can create your own user tables in the public schema. https://supabase.com/docs/guides/auth/managing-user-data?queryGroups=language&language=js').
+As a matter of fact, Supabase recommends creating a 'profiles' table to fetch user data ('For security, the Auth schema is not exposed in the auto-generated API. If you want to access users data via the API, you can create your own user tables in the public schema.' https://supabase.com/docs/guides/auth/managing-user-data?queryGroups=language&language=js).
 
 Once the profiles table was created (we will return on the Supabase query used to create the 'profiles' table later), we decided to use React Query to cache in the profile data, and make use of an API hook created ad hoc to fetch the profiles data from supabase:
 
@@ -215,64 +215,62 @@ The AuthContext.tsx component sets up a centralized authentication state for the
 
 The useState hook initializes the token and user state:
 
-```
-  const [token, setToken] = useState<string | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-
+```ts
+const [token, setToken] = useState<string | null>(null);
+const [user, setUser] = useState<User | null>(null);
 ```
 
 The authenticate function, wrapped with useCallback to avoid unnecessary re-creation (as prompted by Typescript), fetches the metadata from a Supabase authenticated user, and updates the app’s state. In addition to that, it redirects users back to the page they originally intended to visit after login:
 
-```
+```ts
 const authenticate = useCallback(
-    async (supabaseData: { user: SupaUser; session: Session }) => {
-      const { user, session } = supabaseData;
+  async (supabaseData: { user: SupaUser; session: Session }) => {
+    const { user, session } = supabaseData;
 
-      if (!user || !session) {
-        // Session not ready yet
-        return;
-      }
+    if (!user || !session) {
+      // Session not ready yet
+      return;
+    }
 
-      /**
-       * Extract user metadata from Supabase. If no metadata exists,
-       * fall back to an empty object to avoid undefined errors.
-       */
-      const metadata = user.user_metadata || {};
+    /**
+     * Extract user metadata from Supabase. If no metadata exists,
+     * fall back to an empty object to avoid undefined errors.
+     */
+    const metadata = user.user_metadata || {};
 
-      // Create a clean user object for our app.
-      const newUser: User = {
-        id: user.id,
-        first_name: metadata.first_name || "User",
-        last_name: metadata.last_name || "User",
-        email: user.email || "user@example.com",
-        role: metadata.role || "guest",
-        created_at: user.created_at || new Date().toISOString(),
-        country: metadata.country || "Unknown",
-        zip_code: metadata.zip_code || "Unknown",
-      };
+    // Create a clean user object for our app.
+    const newUser: User = {
+      id: user.id,
+      first_name: metadata.first_name || "User",
+      last_name: metadata.last_name || "User",
+      email: user.email || "user@example.com",
+      role: metadata.role || "guest",
+      created_at: user.created_at || new Date().toISOString(),
+      country: metadata.country || "Unknown",
+      zip_code: metadata.zip_code || "Unknown",
+    };
 
-      // Updating the user state with the current logged‑in user.
-      setUser(newUser);
-      setToken(session.access_token || null);
+    // Updating the user state with the current logged‑in user.
+    setUser(newUser);
+    setToken(session.access_token || null);
 
-      // Get the page the user originally wanted to visit before being redirected.
-      // If it exists, we'll send them back there after they log in.
-      const origin = location.state?.intent?.pathname;
+    // Get the page the user originally wanted to visit before being redirected.
+    // If it exists, we'll send them back there after they log in.
+    const origin = location.state?.intent?.pathname;
 
-      if (origin) {
-        navigate(origin);
-      }
-      // The loading should stop after authentication is finished
-      setLoading(false);
-    },
-    [location, navigate],
-  );
+    if (origin) {
+      navigate(origin);
+    }
+    // The loading should stop after authentication is finished
+    setLoading(false);
+  },
+  [location, navigate],
+);
 ```
 
 On component mount, the useEffect hook runs the fetchSession() to check if a user session already exists, and if it does, it re-authenticates it (this usually happens when refreshing the browser):
 
-```
-
+```ts
 useEffect(() => {
   /**
    * This async function tries to restore an existing user session on page load or refresh.
@@ -307,25 +305,24 @@ useEffect(() => {
   fetchSession();
 
   /**
-     * Add listener for auth state changes (login, logout, token refresh)
-     * This ensures the user state and token stay updated automatically, keeping
-     *  the auth context in sync with Supabase
-     * https://supabase.com/docs/reference/javascript/auth-onauthstatechange
-     */
-    const { data: subscription } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (session?.user) {
-          authenticate({ user: session.user, session });
-        } else {
-          setUser(null);
-          setToken(null);
-        }
-      },
-    );
-    // Clean up the listener when the component unmounts
-    return () => subscription?.subscription.unsubscribe();
-  }, [authenticate]);
-
+   * Add listener for auth state changes (login, logout, token refresh)
+   * This ensures the user state and token stay updated automatically, keeping
+   *  the auth context in sync with Supabase
+   * https://supabase.com/docs/reference/javascript/auth-onauthstatechange
+   */
+  const { data: subscription } = supabase.auth.onAuthStateChange(
+    (event, session) => {
+      if (session?.user) {
+        authenticate({ user: session.user, session });
+      } else {
+        setUser(null);
+        setToken(null);
+      }
+    },
+  );
+  // Clean up the listener when the component unmounts
+  return () => subscription?.subscription.unsubscribe();
+}, [authenticate]);
 ```
 
 The signout function, instead, handles logging out the user via Supabase, clearing the token, and navigating them back to the home page:
@@ -354,17 +351,17 @@ This architecture ensures secure, consistent user session management, and exerci
 
 ## SignUp page
 
-The signUpPage.tsx file creates a user registration page leveraging Supabase for the backend authentication, as already mentioned in the AuthContext.tsx section above.
+The **signUpPage.tsx** file creates a user registration page leveraging Supabase for the backend authentication, as already mentioned in the **AuthContext.tsx** section above.
 
 ![alt text](image-13.png)
 
-It first initializes state with useState to track values for first name, last name, email, and password, as well as boolean state such as nameError, and passwordError to manage validation:
+It first initializes state with useState to track values for first name, last name, email, and password, as well as boolean state such as 'nameError', and 'passwordError' to manage validation:
 
 ![alt text](image-14.png)
 
-Other useStates were created to handle states for various purposes. However, the ones worth spending a few words about are the 'confirmationMessage' and the 'rejectionMessage'. Through them, we created a conditional UI block with ternary operator so that if the user is successfully created, we will be able to show a green strip with the confirmation message, whereas a red one with the rejection message will be sown in case the account is already created:
+Other useStates were created to handle states for various purposes. However, the ones worth spending a few words about are the 'confirmationMessage' and the 'rejectionMessage'. Through them, we created a conditional UI block with ternary operator so that if the user is successfully created, we will be able to show a green strip with the confirmation message, whereas a red one with the rejection message will be shown in case the account is already created:
 
-```
+```ts
 // We will set a confirmation message
       // https://stackoverflow.com/questions/73802604/how-to-check-if-user-already-exists-in-supabase
       if (data.user && !data.user.email_confirmed_at) {
@@ -446,9 +443,9 @@ Other useStates were created to handle states for various purposes. However, the
 
 ![alt text](image-16.png)
 
-In the above code, we also call in the 'createStripeCustomerApi' function to create a Stripe customer, as per https://docs.stripe.com/api/customers/create, and fill the 'stripe_customer_id' column in the Supabase 'profiles' table:
+In the above code, we also call in the 'createStripeCustomerApi' function in the **api/user-booking-aoi.ts** to create a Stripe customer, as per https://docs.stripe.com/api/customers/create, and fill the 'stripe_customer_id' column in the Supabase 'profiles' table:
 
-```
+```ts
 /**
  * Creates a Stripe customer for the user if they don't already have one.
  * https://docs.stripe.com/api/customers/create
@@ -474,9 +471,21 @@ export const createStripeCustomerApi = async (params: {
 };
 ```
 
-```
-[{"idx":3,"id":"2874431a-c034-406a-8d6f-dc9fb3c59c48","email":"setuproject.guesteasebb@gmail.com","first_name":"Andrea","last_name":"Nardinocchi","country":"Ireland","zip_code":"T12Y2NE","role":"admin","created_at":"2026-02-17 18:33:39.07747+00","stripe_customer_id":"cus_U0K9ZaYZ3ENM0e"}]
-
+```json
+[
+  {
+    "idx": 3,
+    "id": "2874431a-c034-406a-8d6f-dc9fb3c59c48",
+    "email": "setuproject.guesteasebb@gmail.com",
+    "first_name": "Andrea",
+    "last_name": "Nardinocchi",
+    "country": "Ireland",
+    "zip_code": "T12Y2NE",
+    "role": "admin",
+    "created_at": "2026-02-17 18:33:39.07747+00",
+    "stripe_customer_id": "cus_U0K9ZaYZ3ENM0e"
+  }
+]
 ```
 
 This is essential, then, for the user to be able to access and fill out the Stripe checkout to complete or update a booking.
@@ -485,7 +494,7 @@ Last but not least, we introduce a Supbase PostgreSQL function called 'check_ema
 
 ![alt text](image-17.png)
 
-```
+```sql
 -- This function checks whether an email already exists in Supabase's
 -- authentication table 'auth.users'.
 -- This is connected to the SignUpPage.tsx
@@ -528,16 +537,17 @@ $$;
 
 The **routes/protectedRoutes.tsx** file is used to guard routes that require authentication. It uses useContext to access the AuthContext, which provides the current user's authentication token.
 
-```
- const authContext = useContext(AuthContext);
-  const { token, loading } = authContext || {};
+```ts
+const authContext = useContext(AuthContext);
+const { token, loading } = authContext || {};
+const location = useLocation();
 ```
 
-The useLocation hook captures the current route so that after login, the user can be redirected back to their intended destination.
+The useLocation() hook captures the current route so that after login, the user can be redirected back to their intended destination.
 
 The Navigate component handles the redirect to /login. If the token exists, the user is allowed to access the protected content.
 
-```
+```ts
 if (!token) {
     return (
       <Navigate
@@ -566,46 +576,45 @@ The component, finally, returns its children, which represent the protected rout
 
 The **loginPage.tsx** uses useState hook to manage form inputs such as email, password, and error states:
 
-```
-  /**
-   * Access the authentication context, giving the component
-   * access to user data, token, and auth-related functions.
-   */
-  const auth = useContext(AuthContext);
+```ts
+/**
+ * Access the authentication context, giving the component
+ * access to user data, token, and auth-related functions.
+ */
+const auth = useContext(AuthContext);
 
-  // useSate() hooks for storing user input from the login form.
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+// useSate() hooks for storing user input from the login form.
+const [email, setEmail] = useState("");
+const [password, setPassword] = useState("");
 
-  const navigate = useNavigate();
+const navigate = useNavigate();
 
-  /**
-   * As we would like to handle empty field errors, we will set an error and
-   * handle it in the handleSignUp function below.
-   * https://muhimasri.com/blogs/mui-validation/
-   */
-  const [emailError, setEmailError] = useState(false);
-  const [passwordError, setPasswordError] = useState(false);
-
+/**
+ * As we would like to handle empty field errors, we will set an error and
+ * handle it in the handleSignUp function below.
+ * https://muhimasri.com/blogs/mui-validation/
+ */
+const [emailError, setEmailError] = useState(false);
+const [passwordError, setPasswordError] = useState(false);
 ```
 
 The rationale behind creating separate errors was to trigger a targeted response to handle empty field errors, so that if the email text filed was empty, it would trigger the 'emailError' only, and vice versa.
 
 The useState() hook for:
 
-```
- /**
-   * As we would like to handle incorrect data inputted by the user,
-   * we will set an error and handle it in the handleSignUp function below.
-   */
-  const [loginError, setLoginError] = useState("");
+```ts
+/**
+ * As we would like to handle incorrect data inputted by the user,
+ * we will set an error and handle it in the handleSignUp function below.
+ */
+const [loginError, setLoginError] = useState("");
 ```
 
 would be triggered to handle incorrect data inputted by the user.
 
-When the user clicks the login button, the login function validates email and password fields, marking errors if empty. If errors exist ('hasError'), it sets a login error message and exits early. To do that, we first created a 'hasError' boolean variable which would be 'true' or 'false' based upon whether the text fileds are empty (to ensure a sanitized input we use the trim() which removes any whitespac). In the end, if 'hasError' turns out 'true', the loginError kicks in:
+When the user clicks the login button, the login function validates email and password fields, marking errors if empty. If errors exist ('hasError'), it sets a login error message and exits early. To do that, we first created a 'hasError' boolean variable which would be 'true' or 'false' based upon whether the text fields are empty (to ensure a sanitized input we use the trim() which removes any white spaces). In the end, if 'hasError' turns out 'true', the 'loginError' kicks in:
 
-```
+```ts
  /**
    * Handles login logic when the user submits the form.
    * If an 'authenticate' function is available (from context),
@@ -637,9 +646,9 @@ When the user clicks the login button, the login function validates email and pa
     }
 ```
 
-if no error is detected, the credentials are pushed to Supabase using signInWithPassword(), after the 'onChange listener detects the useState hook state change and grabs the new email and password values in the text field tags:
+if no error is detected, the credentials are pushed to Supabase using signInWithPassword(), after the 'onChange' listener detects the useState hook state change and grabs the new email and password values in the text field tags:
 
-```
+```ts
 Ex.
 
     {/* Email Field
@@ -667,7 +676,7 @@ Ex.
 
 If Supabase returns an error, it logs and displays it, but if the login is successful, it clears errors and calls the authenticate function from context:
 
-```
+```ts
  // The below async function sends a request to Supabase using the user credentials
     // https://supabase.com/docs/reference/javascript/auth-signinwithpassword
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -710,13 +719,12 @@ This updates the global auth state with the user and session. Finally, it redire
 
 Of course, the very first step was to actually extract the 'authenticate' function from the AuthContext using React's 'useContext' hook. If 'useContext(AuthContext)' returns 'null' or 'undefined', it safely falls back to an empty object '({})', which averts an error during destructuring:
 
-```
+```ts
 /**
-   * Access the authentication context, giving the component
-   * access to user data, token, and auth-related functions.
-   */
-  const auth = useContext(AuthContext);
-
+ * Access the authentication context, giving the component
+ * access to user data, token, and auth-related functions.
+ */
+const auth = useContext(AuthContext);
 ```
 
 The form is responsive and accessible, and the navigate hook redirects users after login or to the signup page. However, the form also features a reset password link which will triggered a password reset email from Supabase:
@@ -727,7 +735,7 @@ The form is responsive and accessible, and the navigate hook redirects users aft
 
 This is achieved by calling the below function resetPassword() from the **AuthContext.tsx** file, which, in turn, calls the Supabase function 'resetPasswordForEmail()':
 
-```
+```ts
    <Button
                   /**
                    * If no email has been entered by the user,
@@ -764,30 +772,29 @@ This is achieved by calling the below function resetPassword() from the **AuthCo
 
 from **AuthContext.tsx**:
 
-```
+```ts
 const resetPassword = async (email: string) => {
-    if (!email) {
-      console.error("Email is required for password reset");
-      return { error: "Email is required" };
+  if (!email) {
+    console.error("Email is required for password reset");
+    return { error: "Email is required" };
+  }
+
+  try {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${frontendUrl}/update-password`, // It will be replaced by the deployed URL
+    });
+
+    if (error) {
+      console.error("Reset password error:", error.message);
+      return { error: error.message };
     }
 
-    try {
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${frontendUrl}/update-password`, // It will be replaced by the deployed URL
-      });
-
-      if (error) {
-        console.error("Reset password error:", error.message);
-        return { error: error.message };
-      }
-
-      return { success: true };
-    } catch (err: any) {
-      console.error("Reset password exception:", err.message);
-      return { error: err.message };
-    }
-  };
-
+    return { success: true };
+  } catch (err: any) {
+    console.error("Reset password exception:", err.message);
+    return { error: err.message };
+  }
+};
 ```
 
 ### Source attribution
@@ -813,32 +820,31 @@ The **updatePassword.tsx** page is a helper page to enable the user to entry the
 
 The code explanation in the below comment is pretty straightforward
 
-```
-  /**
-   * Handles Supabase's password‑reset flow.
-   * When the user opens the reset link, Supabase sends a temporary
-   * recovery access_token in the URL and triggers a "PASSWORD_RECOVERY" event.
-   * Listening for this event ensures the recovery session is active before
-   * calling updateUser({ password }), preventing the "Auth session missing!" error.
-   * https://supabase.com/docs/reference/javascript/auth-onauthstatechange
-   */
-  useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === "PASSWORD_RECOVERY") {
-          console.log("Recovery session loaded:", session);
-        }
-      },
-    );
+```ts
+/**
+ * Handles Supabase's password‑reset flow.
+ * When the user opens the reset link, Supabase sends a temporary
+ * recovery access_token in the URL and triggers a "PASSWORD_RECOVERY" event.
+ * Listening for this event ensures the recovery session is active before
+ * calling updateUser({ password }), preventing the "Auth session missing!" error.
+ * https://supabase.com/docs/reference/javascript/auth-onauthstatechange
+ */
+useEffect(() => {
+  const { data: listener } = supabase.auth.onAuthStateChange(
+    async (event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        console.log("Recovery session loaded:", session);
+      }
+    },
+  );
 
-    return () => listener.subscription.unsubscribe();
-  }, []);
-
+  return () => listener.subscription.unsubscribe();
+}, []);
 ```
 
 To be added that it runs inside a useEffect() hook so the auth-state listener is created only once and doesn’t re‑subscribe on every render. The cleanup function inside the effect removes the listener when the component unmounts to prevent memory leaks.
 
-At this point, when the user clicks on the update password 'tokenized' link received by email, they will land on the Updated Password page (in logged in status because of the temporary token crreated by the Supabase function) to enable them to set a new password:
+At this point, when the user clicks on the update password 'tokenized' link received by email, they will land on the Updated Password page (in logged in status because of the temporary token created by the Supabase function) to enable them to set a new password:
 
 ![alt text](image-21.png)
 
@@ -849,7 +855,7 @@ At this point, when the user clicks on the update password 'tokenized' link rece
 
 ## supabaseClient file
 
-This file basically installs and sets up the Supabase TypeScript client in the MoviesApp project. The @supabase/supabase-js package is first installed using npm.
+This file basically installs and sets up the Supabase TypeScript client in the project. The @supabase/supabase-js package is first installed using npm.
 
 ```
 npm install @supabase/supabase-js
@@ -872,7 +878,7 @@ The **context/searchRoomsContext.tsx** defines a dedicated React context for han
 
 It begins by importing React’s createContext, the Supabase‑backed 'searchAvailableRooms' service, and the 'SearchRoomContextType' from the **interface.tsx** that enforces the structure of the context value.
 
-```
+```ts
 export type SearchRoomContextType = {
   /**
    * availableRoomsSearchObjectType is a function that queries available rooms based on:
@@ -892,11 +898,9 @@ export type SearchRoomContextType = {
     message?: string; // Optional message for errors or additional info
   }>;
 };
-
-
 ```
 
-The SearchProvider component wraps the application and exposes a single asynchronous function 'availableRoomsSearchObjectType' responsible for performing the room search. This accepts the check‑in date, check‑out date, and number of guests and forwards them to the 'searchAvailableRooms.ts' service.
+The SearchProvider component wraps the application and exposes a single asynchronous function 'availableRoomsSearchObjectType' responsible for performing the room search. This accepts the check‑in date, check‑out date, and number of guests and forwards them to the **searchAvailableRooms.ts** service.
 
 ![alt text](image-24.png)
 
@@ -926,15 +930,14 @@ One issue we had to cope with when testing the app was on the user booking updat
 
 We resolved this issue by simply excluding the current booking id by adding the argument 'exclude_booking_id':
 
-```
+```ts
 const { data, error } = await supabase.rpc("get_available_rooms", {
-      check_in: checkIn,
-      check_out: checkOut,
-      guests: guests,
-      // Added to exclude the current booking id when user is updating their booking dates
-      exclude_booking_id: excludeBookingId,
-    });
-
+  check_in: checkIn,
+  check_out: checkOut,
+  guests: guests,
+  // Added to exclude the current booking id when user is updating their booking dates
+  exclude_booking_id: excludeBookingId,
+});
 ```
 
 ### Source attributions
@@ -949,7 +952,7 @@ This Supabase PostgeSQL function 'get_available_rooms' defines an async service 
 
 The function normalizes the response into a consistent { success, rooms, message } shape so the UI can rely on predictable data. If there is an error, we catch it and return a clean message instead of breaking the app
 
-```
+```sql
 ...
 
 CREATE OR REPLACE FUNCTION public.get_available_rooms(
@@ -976,19 +979,18 @@ RETURNS TABLE (
 
 One of the requirements we had set out to impose on the function was that of unallowing booking overlaps so that users can be sure that the room they book is reserved for them indeed. We resolved this issue by using the 'btree_gist' extension and by adding the below constraint:
 
-```
+```sql
 ALTER TABLE bookings
 ADD CONSTRAINT no_overlapping_bookings
 EXCLUDE USING gist (
   room_id WITH =,
   period WITH &&
 );
-
 ```
 
 The function, then, will 'select' the room with the below condition:
 
-```
+```sql
 WHERE
   -- Ensure room can accommodate the requested number of guests
   r.capacity >= guests
@@ -1012,7 +1014,7 @@ WHERE
 
 ```
 
-If we did not provide any booking ID to exclude, the condition is automatically true (exclude_booking_id IS NULL) and nothing special is filtered out. Otherwise, we will include all bookings tha do not match the the booking id to exclude so that the user 'update booking' functionality will work with no issues (the booking id to exclude is the one the user is updating).
+If we did not provide any booking ID to exclude, the condition is automatically true (exclude_booking_id IS NULL) and nothing special is filtered out. Otherwise, we will include all bookings that do not match the booking id to exclude, so that the user 'update booking' functionality will work with no issues (the booking id to exclude is the one the user is updating).
 
 ### Source attributions
 
@@ -1031,13 +1033,13 @@ The **homePage.tsx** file defines the GuestEase homepage from which the user can
 
 ![alt text](image-28.png)
 
-Right underneath the hero image, there is just a simple banner with a welcoming message for the user. However, the user won't certainly miss the search form built out in **searchRoomsForm.tsx** because of its stickyness (if the user keeps scrolling down, the search form will stick to the top of the page, and will acoompany the user navigation throughout the page):
+Right underneath the hero image, there is just a simple banner with a welcoming message for the user. However, the user won't certainly miss the search form built out in **searchRoomsForm.tsx** because of its stickyness (if the user keeps scrolling down, the search form will stick to the top of the page, and will accompany the user navigation throughout the page):
 
 ![alt text](image-29.png)
 
-This effect was achieved by wrapping the above-mentioned component with the **stickyHeaderComp.tsx** one, wich is, in turn, a reusable wrapper that creates a sticky navigation container using the Material‑UI's Box component:
+This effect was achieved by wrapping the above-mentioned component with the **stickyHeaderComp.tsx** one, which is, in turn, a reusable wrapper that creates a sticky navigation container using the Material‑UI's Box component:
 
-```
+```ts
 const StickyHeaderComp: React.FC<StickyNavigationBarProps> = ({ children }) => {
   return (
     <Box
@@ -1063,7 +1065,7 @@ We resolved that by creating the **responsiveSearchFormWrapper.tsx** component, 
 
 In essence, what this wrapper component does is to detect whether the screen width is less than 768px and treats that as a mobile view. It listens for window resize events to keep the 'isMobile' state updated:
 
-```
+```ts
 /**
    * Track whether the viewport is mobile-sized.
    * window.innerWidth is safe here because this component is client-side only.
@@ -1096,9 +1098,9 @@ In essence, what this wrapper component does is to detect whether the screen wid
 and cleans up the event listener when the component unmounts.
 On desktop, it simply renders its children normally.
 
-On mobile, it wraps the children in a sticky header with a clickable bar labeled 'Search your room'that toggles a dropdown, showing or hiding the children content.
+On mobile, it wraps the children in a sticky header with a clickable bar labeled 'Search your room' that toggles a dropdown, showing or hiding the children content.
 
-```
+```ts
  {/* Mobile header bar that toggles the dropdown */}
        <div
          onClick={() => setOpen(!open)}
@@ -1132,11 +1134,11 @@ On mobile, it wraps the children in a sticky header with a clickable bar labeled
        )}
 ```
 
-Another interesting section in the homepage is the **homepageExpCarousel.tsx**, which renders a carousel made of 4 cards defined in the **homepageExpCardHorizontal.tsx**.
+Another interesting section in the homepage is the **homepageExpCarousel.tsx**, which renders a carousel made of 4 cards defined in the **homepageExpCardHorizontal.tsx** component.
 
 In essence, the cards get populated by leveraging the 'export const experiences: Experience[]' array in the **interfaces.ts** file:
 
-```
+```ts
 ...
 import HomepageExpCardHorizontal from "../homepageExpCardHorizontal/homepageExpCardHorizontal";
 import type { Experience } from "../../types/interfaces";
@@ -1147,51 +1149,49 @@ const HomepageExpCarousel = ({
   experiences: Experience[];
 }) => {
 ...
-
 ```
 
 The component, then, uses a 'useRef', a React hook, to directly control the scrollable container.
 
-```
- const scrollRef = useRef<HTMLDivElement>(null);
+```ts
+const scrollRef = useRef<HTMLDivElement>(null);
 ```
 
 It keeps track of the currently visible slide with 'currentIndex' state and updates it when the user clicks the next or previous arrows.
 
-```
-  const [currentIndex, setCurrentIndex] = useState(0);
+```ts
+const [currentIndex, setCurrentIndex] = useState(0);
 ```
 
 The 'goTo' function adjusts the index within bounds and smoothly scrolls the container to the correct position based on its width.
 
-```
- const goTo = (direction: "next" | "prev") => {
-    let newIndex = currentIndex;
+```ts
+const goTo = (direction: "next" | "prev") => {
+  let newIndex = currentIndex;
 
-    if (direction === "next" && currentIndex < experiences.length - 1) {
-      newIndex = currentIndex + 1;
-    }
+  if (direction === "next" && currentIndex < experiences.length - 1) {
+    newIndex = currentIndex + 1;
+  }
 
-    if (direction === "prev" && currentIndex > 0) {
-      newIndex = currentIndex - 1;
-    }
+  if (direction === "prev" && currentIndex > 0) {
+    newIndex = currentIndex - 1;
+  }
 
-    setCurrentIndex(newIndex);
+  setCurrentIndex(newIndex);
 
-    // Scroll 'smoothly' to the new slide
-    if (scrollRef.current) {
-      scrollRef.current.scrollTo({
-        left: scrollRef.current.clientWidth * newIndex,
-        behavior: "smooth",
-      });
-    }
-  };
-
+  // Scroll 'smoothly' to the new slide
+  if (scrollRef.current) {
+    scrollRef.current.scrollTo({
+      left: scrollRef.current.clientWidth * newIndex,
+      behavior: "smooth",
+    });
+  }
+};
 ```
 
 Slides are rendered side by side using flexbox, each taking full width and preventing shrink, while navigation arrows are conditionally displayed depending on whether the user is at the first or last slide.
 
-```
+```ts
  {/* Right arrow: only shown when not on the last slide */}
       {currentIndex < experiences.length - 1 && (
         <IconButton
@@ -1253,56 +1253,53 @@ The **searchRoomsForm.tsx** component renders a responsive room search form that
 
 It initializes default dates (today and tomorrow) and stores all form values in state.
 
-```
-  /** Extract the searchAvailableRooms function from the **useRoomsSearching.ts** hook.
-   * This abstracts away Supabase logic from the UI.
-   */
-  const { availableRoomsSearchObjectType } = useRoomsSearching();
+```ts
+/** Extract the searchAvailableRooms function from the **useRoomsSearching.ts** hook.
+ * This abstracts away Supabase logic from the UI.
+ */
+const { availableRoomsSearchObjectType } = useRoomsSearching();
 
-  /**
-   * Today's date in YYYY-MM-DD format.
-   * Used to prevent selecting past dates, and we use it inside the date inputs.
-   * https://www.geeksforgeeks.org/javascript/javascript-date-toisostring-method/
-   * https://stackoverflow.com/questions/47066555/remove-time-after-converting-date-toisostring#55231024
-   */
-  const today = new Date().toISOString().split("T")[0];
+/**
+ * Today's date in YYYY-MM-DD format.
+ * Used to prevent selecting past dates, and we use it inside the date inputs.
+ * https://www.geeksforgeeks.org/javascript/javascript-date-toisostring-method/
+ * https://stackoverflow.com/questions/47066555/remove-time-after-converting-date-toisostring#55231024
+ */
+const today = new Date().toISOString().split("T")[0];
 
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().split("T")[0];
+const tomorrow = new Date();
+tomorrow.setDate(tomorrow.getDate() + 1);
+const tomorrowStr = tomorrow.toISOString().split("T")[0];
 
-  const navigate = useNavigate();
+const navigate = useNavigate();
 
-  // Form state for check-in, check-out, and guest count
-  const [formData, setFormData] = useState<SearchFormData>({
-    checkIn: today,
-    checkOut: tomorrowStr,
-    guests: 1,
-  });
-
+// Form state for check-in, check-out, and guest count
+const [formData, setFormData] = useState<SearchFormData>({
+  checkIn: today,
+  checkOut: tomorrowStr,
+  guests: 1,
+});
 ```
 
 The 'handleChange' function, then, updates the correct field dynamically, converting the guests value to a number.
 
-```
+```ts
 const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Extract the input's name and value from the event.
-    const { name, value } = e.target;
-    // Update the formData state by keeping all previous fields (...prev)
-    // https://www.geeksforgeeks.org/reactjs/how-to-get-previous-state-in-reactjs-functional-component/
-    setFormData((prev) => ({
-      ...prev,
-      // Convert "guests" to a number (because input values are strings)
-      [name]: name === "guests" ? Number(value) : value,
-    }));
-  };
+  // Extract the input's name and value from the event.
+  const { name, value } = e.target;
+  // Update the formData state by keeping all previous fields (...prev)
+  // https://www.geeksforgeeks.org/reactjs/how-to-get-previous-state-in-reactjs-functional-component/
+  setFormData((prev) => ({
+    ...prev,
+    // Convert "guests" to a number (because input values are strings)
+    [name]: name === "guests" ? Number(value) : value,
+  }));
+};
 ```
 
-When the user clicks **Search Rooms**, the form does not reload the page because 'handleSubmit' stops the default browser behavior. Instead, it calls the 'availableRoomsSearchObjectType', which is a function from the custom hook ('useRoomsSearching.ts') that provides access to the **searchRoomsContext.ts**, which, ultimately, fetches the available rooms from the 'get_available_rooms' function in Supabase through the **availableRooms.ts** function. The latter is the function checks the database (via Supabase) for available rooms based on the selected dates and number of guests.
+When the user clicks 'Search Rooms', the form does not reload the page because handleSubmit prevents the browser’s default behavior. Instead, it calls the 'availableRoomsSearchObjectType' function, which comes from the custom hook 'useRoomsSearching.ts'. That hook works with the logic provided by 'searchRoomsContext.ts', and the context is what ultimately triggers the request to fetch available rooms. The actual database query happens inside **availableRooms.ts**, which calls the 'get_available_rooms' RPC in Supabase. That RPC checks the database for rooms that match the selected dates and number of guests and returns the available options.
 
-When the user clicks Search Rooms, the form does not reload the page because handleSubmit prevents the browser’s default behavior. Instead, it calls the 'availableRoomsSearchObjectType' function, which comes from the custom hook 'useRoomsSearching.ts'. That hook works with the logic provided by 'searchRoomsContext.ts', and the context is what ultimately triggers the request to fetch available rooms. The actual database query happens inside 'availableRooms.ts', which calls the 'get_available_rooms' RPC in Supabase. That RPC checks the database for rooms that match the selected dates and number of guests and returns the available options.
-
-```
+```ts
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
 
@@ -1321,10 +1318,9 @@ const handleSubmit = async (e: React.FormEvent) => {
     `/search-results?checkIn=${formData.checkIn}&checkOut=${formData.checkOut}&guests=${formData.guests}`,
   );
 };
-
 ```
 
-If no rooms are found or something goes wrong, an alert shows the error message. If the search is successful, the user is redirected to the '/search-results' page, and the chosen check-in date, check-out date, and guest count are included in the URL so the results page knows what to display.
+If no rooms are found or something goes wrong, an alert shows the error message. If the search is successful, the user is redirected to the '/search-results' page, and the chosen check-in date, check-out date, and guests count are included in the URL so the results page knows what to display.
 
 ### Source attributions
 
@@ -1355,36 +1351,35 @@ If no rooms are found or something goes wrong, an alert shows the error message.
 
 ## Search Results Page
 
+![alt text](image-67.png)
+
 The 'SearchResultsPage' component is a React functional component that displays the list of available rooms based on the search parameters ('checkIn', 'checkOut', and 'guests').
 It uses the 'useLocation' hook from React Router to extract the URL search parameters and pass them to the custom hook, **useAvailableRooms.ts**, which fetches the room data from Supabase.
 
+```ts
+/**
+ * Extract URL parameters using URLSearchParams
+ * https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams
+ */
+const params = new URLSearchParams(location.search);
+const checkIn = params.get("checkIn") || "";
+const checkOut = params.get("checkOut") || "";
+const guests = Number(params.get("guests")) || 1;
+
+/**
+ * Fetch rooms using React Query hook.
+ *  https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
+ */
+const {
+  data: rooms,
+  isLoading,
+  error,
+} = useAvailableRooms(checkIn, checkOut, guests);
 ```
 
-  /**
-   * Extract URL parameters using URLSearchParams
-   * https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams
-   */
-  const params = new URLSearchParams(location.search);
-  const checkIn = params.get("checkIn") || "";
-  const checkOut = params.get("checkOut") || "";
-  const guests = Number(params.get("guests")) || 1;
+It is worth now taking a step back and going over the above mentioned custome hook:
 
-  /**
-   * Fetch rooms using React Query hook.
-   *  https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
-   */
-  const {
-    data: rooms,
-    isLoading,
-    error,
-  } = useAvailableRooms(checkIn, checkOut, guests);
-
-
-```
-
-It is woth now taking a step back an going over the above mentioned custome hook:
-
-```
+```ts
 import { useQuery } from "@tanstack/react-query";
 import { searchAvailableRooms } from "../supabase/availableRooms";
 
@@ -1420,7 +1415,7 @@ As can be observed above, we use React Query to fetch and cache data from the fu
 
 The component also allows users to filter rooms by amenities, which are stored in the 'selectedAmenities' state and applied to filter the rooms.
 
-```
+```ts
  /**
    * Filter rooms based on selected amenities.
    * If no amenities are selected, show all rooms.
@@ -1502,11 +1497,11 @@ The component also allows users to filter rooms by amenities, which are stored i
 
 If no amenities are selected, all rooms are shown.
 
-The rooms are displayed in a grid format using 'RoomHorizontalCard' components, where each card contains dynamic data like room name, description, price, and images.
+The rooms are displayed in a grid format using 'RoomHorizontalCard' components, where each card contains dynamic data like room name, description, price, amenities, and images.
 
 The images are fetched using the 'getPublicUrl' function from the **utils/supabaseAssetsStorage.ts** file,
 
-```
+```ts
 export function getPublicUrl(path: string) {
   /**
    * supabase.storage.from("assets") selects the bucket named 'assets'
@@ -1518,7 +1513,7 @@ export function getPublicUrl(path: string) {
 
 which handles different image paths depending on whether the image is newly uploaded by the admin via the **adminRoomsPage.js** backend or manually updated to Supabase by the writer.
 
-```
+```ts
 images={room.images.map(
                (img) =>
                  /**
@@ -1918,7 +1913,7 @@ If the amenity is not already selected, it needs to be added to the list. A new 
 
 This copies all previously selected amenities and appends the newly selected one. Returning this new array updates the state and activates the filter.
 
-After defining the toggle logic, the component renders the amenity buttons. The `map()` function loops through all amenities and generates one button for each.
+After defining the toggle logic, the component renders the amenity buttons. The 'map()' function loops through all amenities and generates one button for each.
 
 ```tsx
 {allAmenities.map((amenity) => (
@@ -1956,37 +1951,42 @@ Here we built a responsive component called 'EditSearchRoomsForm' that allows us
 
 The component leverages the 'editSearchRoomsFormProps' from the 'interface.ts' file
 
+```ts
+/**
+ * These props are needed on the SearchResultsPage
+ */
+export interface editSearchRoomsFormProps {
+  initialCheckIn: string;
+  initialCheckOut: string;
+  initialGuests: number;
+}
 ```
 
+```ts
 const EditSearchRoomsForm: React.FC<editSearchRoomsFormProps> = ({
 initialCheckIn,
 initialCheckOut,
 initialGuests,
 }) => {
-
 ```
 
 and manage the form values entried by the user through the below useState
 
-```
-
+```ts
 const [checkIn, setCheckIn] = useState(initialCheckIn);
 const [checkOut, setCheckOut] = useState(initialCheckOut);
 const [guests, setGuests] = useState(initialGuests);
-
 ```
 
 We added date validation logic to prevent selecting past dates and to ensure check-out is always at least one day after check-in by dynamically setting the 'min' attribute on the date inputs.
 
-```
-
-/\*\*
-
+```ts
+/**
 - Compute the minimum allowed check-out date.
 - If check-in is selected next day after check-in is
 - the minimum allowed date possible.
 - If not, then, 'tomorrow'
-- \*/
+- */
   const nextDayAfterCheckIn = checkIn
   ? new Date(new Date(checkIn).setDate(new Date(checkIn).getDate() + 1))
   .toISOString()
@@ -2003,10 +2003,10 @@ type="date"
 value={checkOut}
 onChange={(e) => setCheckOut(e.target.value)}
 required
-/\*\*
+/**
 _ Ensures check-out cannot be before check-in, nor can it be the same day.
 _ https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/date
-\*/
+*/
 min={nextDayAfterCheckIn || tomorrowStr}
 style={{
             padding: "0.75rem",
@@ -2018,27 +2018,23 @@ style={{
           }}
 />
 ...
-
 ```
 
 When the form is submitted, we validate the dates again and then redirect the user to '/search-results' with updated query parameters in the URL.
 
-```
-
-/\*\*
-
+```ts
+/**
 - updateSearch validates date order, prevents invalid submissions, and
 - redirects to /search-results with updated query params
 - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent
 - https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams
 - \*/
-  const updateSearch = () => {
+const updateSearch = () => {
   if (!checkIn || !checkOut) return alert("Please select valid dates");
   if (new Date(checkOut) <= new Date(checkIn))
-  return alert("Check‑out must be after check‑in.");
+    return alert("Check‑out must be after check‑in.");
   window.location.href = `/search-results?checkIn=${encodeURIComponent(checkIn)}&checkOut=${encodeURIComponent(checkOut)}&guests=${guests}`;
-  };
-
+};
 ```
 
 Overall, the component combines state management, validation, responsive design, and controlled inputs to create a user-friendly and adaptive search update form.
@@ -2065,74 +2061,65 @@ Overall, the component combines state management, validation, responsive design,
 
 ## Room Details page
 
-Here we built the **RoomDetailsPage**, which is the main booking page where a user can view a room’s full details, images, reviews, availability, and complete a reservation.
+Here we built the **RoomDetailsPage.tsx**, which is the main booking page where a user can view a room’s full details, images, reviews, availability, and complete a reservation.
 
 ![alt text](image-32.png)
 
 The page reads the 'roomId' from the URL using React Router,
 
-```
-
-/\*\*
-
+```ts
+/**
 - Extract roomId from the URL.
 - React Router useParams:
 - https://reactrouter.com/en/main/hooks/use-params
-  \*/
-  const { roomId } = useParams<{ roomId: string }>();
-
+  */
+const { roomId } = useParams<{ roomId: string }>();
 ```
 
 then fetches the room data with React Query ('getRoomById')
 
-```
-
-/\*
-
+```ts
+/**
 - React Query fetches Room Details cached by roomId
-  \*/
-  const {
+  */
+const {
   data: room,
   isLoading: roomLoading,
   error: roomError,
-  } = useQuery({
+} = useQuery({
   queryKey: ["room", roomId],
-  /\*\*
+  /**
   - React Router’s useParams() always returns 'string | undefined',
   - because the URL might not contain the param.
   - React Query’s queryFn expects a definite string, hence, we add 'as string'.
   - '...treat the value as a string type, even if it might not originally be one.'
   - https://www.webdevtutor.net/blog/typescript-as-string-vs-tostring
-    \*/
-    queryFn: async () => getRoomById(roomId as string),
-    enabled: !!roomId, // Prevents running until roomId is defined
-    });
-
+    */
+  queryFn: async () => getRoomById(roomId as string),
+  enabled: !!roomId, // Prevents running until roomId is defined
+});
 ```
 
 which is an API async function stored in the **guestease-api.ts** file which fetches the room data from the Supabase 'rooms' table
 
-```
-
-/\*\*
-
+```ts
+/**
 - This is a helper to fetch room data by its id to populate
 - the Booking Confirmation page
-  _/
-  export const getRoomById = async (roomId: string) => {
+  */
+export const getRoomById = async (roomId: string) => {
   const { data, error } = await supabase
-  .from("rooms")
-  .select("_")
-  .eq("id", roomId)
-  .single();
+    .from("rooms")
+    .select("*")
+    .eq("id", roomId)
+    .single();
 
-if (error) {
-throw new Error(`Unable to fetch room: ${error.message}`);
-}
+  if (error) {
+    throw new Error(`Unable to fetch room: ${error.message}`);
+  }
 
-return data;
+  return data;
 };
-
 ```
 
 At that points, we check the room availability through the custom hook **hooks/useAvailableRooms.ts** that calls Supabase.
@@ -2149,7 +2136,7 @@ At that points, we check the room availability through the custom hook **hooks/u
   const [checkOut, setCheckOut] = useState<string>(paramCheckOut);
   const [guests, setGuests] = useState<number>(paramGuests);
 ...
-...ts
+
 /*
    * Fetching Availability
    * Uses the custom hook useAvailableRooms which calls the Supabase RPC function.
@@ -2162,7 +2149,6 @@ At that points, we check the room availability through the custom hook **hooks/u
   );
 
 ...
-
 ```
 
 When a user clicks the 'Book' CTA, we validate the dates and availability,
@@ -2270,7 +2256,7 @@ and calls the backend Express route **createStripeCustomer.js**, which handles t
     ....
 ```
 
-Goig back to the **roomDetailsPage.tsx**, we, temporarily store the booking details, open the Stripe payment dialog,
+Goig back to the **roomDetailsPage.tsx**, we temporarily store the booking details, open the Stripe payment dialog,
 
 ```ts
 // We store the booking data temporarily until the payment flow completes.
@@ -2385,9 +2371,7 @@ export const getRoomReviews = async (roomId: string) => {
 };
 ```
 
-This function fetches all reviews for a specific room from the 'reviews' table using Supabase. It also joins the related user data from the 'profiles' table (via a foreign key) to get the reviewer’s first and last name, and orders the results by newest first.
-
-Finally, it maps over the reviews to create a 'guestName' by merging the user’s first and last name and returns each review with this new 'guestName' field added.
+This function fetches all reviews for a specific room from the 'reviews' table using Supabase, and orders the results by newest first.
 
 The average rating, instead, is calculated through the below function calculateAverageRating() in **utils/calculateAverageRating.ts**, which is called in by the below variable:
 
@@ -2432,7 +2416,7 @@ This component displays all the main details of a room on the Room Details page 
 
 It receives its data and handlers through props in the **type/iterfaces.ts**
 
-```
+```ts
 /**
  * Props definition for RoomDetailsCard which describes all the data,
  * and callback functions that the RoomDetailsCard component needs to render.
@@ -2464,12 +2448,11 @@ export interface RoomDetailsCardProps {
   reviews?: Review[];
   avgRating: number;
 }
-
 ```
 
 It shows the room name, description, capacity, price, average rating, and number of reviews. Fuerthermore, it does provide date pickers for check-in and check-out, ensuring the check-in cannot be before today and the check-out is at least one day after check-in:
 
-```
+```ts
 /**
  * Here we pass through the RoomDetailsCardProps from the interface.ts
  */
@@ -2509,7 +2492,7 @@ const RoomDetailsCard: React.FC<RoomDetailsCardProps> = ({
 
 The guest input prevents selecting more guests than the room’s maximum capacity.
 
-```
+```ts
   {/* Guests + Book button */}
           <Box sx={{ mt: 2 }}>
             <TextField
@@ -2536,9 +2519,9 @@ The guest input prevents selecting more guests than the room’s maximum capacit
 
 When the user clicks 'Book Now' it triggers the onBook function passed from the parent component.
 
-On the right side, it lists all available amenities that we fetched from the Suapabase 'rooms' table and 'mapped. through the below unordered list:
+On the right side, it lists all available amenities that we fetched from the Supabase 'rooms' table and 'mapped' through the below unordered list:
 
-```
+```ts
  <Box sx={{ width: "100%", pl: { md: 35 }, boxSizing: "border-box" }}>
           <Typography
             variant="h6"
@@ -2573,21 +2556,21 @@ Finally. It includes a clickable text that opens a stay policy modal, controlled
 
 It gets managed by the below boolean useState() and callbacks
 
-```
+```ts
 // useState to manage the roomStayPolicyModal
-  const [policyOpen, setPolicyOpen] = useState(false);
+const [policyOpen, setPolicyOpen] = useState(false);
 
-  /**
-   * The are the callbacks to handle the opening and closing of the modal
-   * https://stackoverflow.com/questions/73752294/react-usestate-boolean-issue-functional-component
-   */
-  const handleOpenPolicy = () => setPolicyOpen(true);
-  const handleClosePolicy = () => setPolicyOpen(false);
+/**
+ * The are the callbacks to handle the opening and closing of the modal
+ * https://stackoverflow.com/questions/73752294/react-usestate-boolean-issue-functional-component
+ */
+const handleOpenPolicy = () => setPolicyOpen(true);
+const handleClosePolicy = () => setPolicyOpen(false);
 ```
 
 which is opened when the link is clicked
 
-```
+```ts
   <Typography
         variant="body1"
         gutterBottom
@@ -2606,9 +2589,8 @@ which is opened when the link is clicked
 
 and closed through the 'handleClosePolicy' callback once the user clicks on 'CLOSE'.
 
-```
+```ts
       <AlertDialogSlide open={policyOpen} onClose={handleClosePolicy} />
-
 ```
 
 The policy modal is created by the components **roomStayPolicyModal.tsx**.
@@ -2970,20 +2952,20 @@ Once this whole payment flow has been successfully completed, it notifies the pa
 
 ## Stripe Checkout
 
-This file in **components/stripeheckOut.tsx** renders a secure payment form using Stripe Elements.
+This file in **components/stripeCheckOut/stripeCheckOut.tsx** renders a secure payment form using Stripe Elements.
 
 It receives a 'clientSecret' from the backend, which is created when a Stripe SetupIntent is generated, and uses it to securely confirm the card setup
 
-```
+```ts
 interface StripeCheckoutProps {
-  // The client secret returned from your backend when creating a SetupIntent.
+  // The client secret returned from the backend when creating a SetupIntent.
   clientSecret: string | null;
   // Receives the ID of the confirmed payment method.
   onSuccess?: (paymentMethodId: string) => void;
 }
 
 /**
- * This component will hosts the Stripe payment form.
+ * This component will host the Stripe payment form.
  * https://stripe.com/docs/payments/accept-a-payment?platform=web&ui=elements
  * https://mui.com/material-ui/react-card/
  */
@@ -2997,84 +2979,84 @@ const StripeCheckOut: React.FC<StripeCheckoutProps> = ({
 
 When the component renders, it initializes Stripe using the 'useStripe' and 'useElements' hooks so it can interact with Stripe.js.
 
-```
- /**
-   * 'The useStripe hook returns a reference to the Stripe instance passed to the Elements provider.'
-   * https://docs.stripe.com/sdks/stripejs-react?ui=elements#usestripe-hook
-   */
-  const stripe = useStripe();
-  /**
-   * 'To safely pass the payment information collected by the Payment Element to the Stripe API,
-   * access the Elements instance so that you can use it with stripe.confirmPayment.
-   * If you use the React Hooks API, then useElements is the recommended way to access a mounted Element.
-   * If you need to access an Element from a class component, use ElementsConsumer instead.'
-   * https://docs.stripe.com/sdks/stripejs-react?ui=elements#useelements-hook
-   */
-  const elements = useElements();
+```ts
+/**
+ * 'The useStripe hook returns a reference to the Stripe instance passed to the Elements provider.'
+ * https://docs.stripe.com/sdks/stripejs-react?ui=elements#usestripe-hook
+ */
+const stripe = useStripe();
+/**
+ * 'To safely pass the payment information collected by the Payment Element to the Stripe API,
+ * access the Elements instance so that you can use it with stripe.confirmPayment.
+ * If you use the React Hooks API, then useElements is the recommended way to access a mounted Element.
+ * If you need to access an Element from a class component, use ElementsConsumer instead.'
+ * https://docs.stripe.com/sdks/stripejs-react?ui=elements#useelements-hook
+ */
+const elements = useElements();
 ```
 
-It, then, displays a Stripe 'CardElement', which securely collects the user’s card number, expiration date, and CVC inside a Stripe-hosted iframe, ensuring sensitive card data never touches your server. A separate postal code field is collected and included as billing information.
+It, then, displays a Stripe 'CardElement', which securely collects the user’s card number, expiration date, and CVC inside a Stripe-hosted iframe, ensuring sensitive card data never touches our server. A separate postal code field is collected and included as billing information.
 
 ![alt text](image-35.png)
 
 When the user submits the form, the component calls 'stripe.confirmCardSetup' with the client secret and card details.
 
-```
+```ts
 const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
+  e.preventDefault();
+  setError(null);
 
-    // https://docs.stripe.com/sdks/stripejs-react?ui=elements
-    if (!stripe || !elements) return;
+  // https://docs.stripe.com/sdks/stripejs-react?ui=elements
+  if (!stripe || !elements) return;
 
-    setLoading(true);
+  setLoading(true);
 
-    const card = elements.getElement(CardElement);
+  const card = elements.getElement(CardElement);
 
-    if (!card) {
-      setError("Card element not found");
-      setLoading(false);
-      return;
-    }
-
-    console.log("clientSecret:", clientSecret);
-
-    /**
-     * Confirms the SetupIntent using the card details and billing info.
-     * This step securely exchanges card data with Stripe.
-     * https://docs.stripe.com/js/setup_intents/confirm_card_setup#stripe_confirm_card_setup-options
-     * */
-    const { setupIntent, error } = await stripe.confirmCardSetup(clientSecret, {
-      payment_method: {
-        card,
-        billing_details: { address: { postal_code: postalCode } },
-      },
-    });
-
+  if (!card) {
+    setError("Card element not found");
     setLoading(false);
-    // If Stripe returned an error during confirmation, surface it to the user.
-    if (error) {
-      setError(error.message || "Something went wrong");
-      return;
-    }
-    /**
-     * If the SetupIntent completed successfully and Stripe returned a payment method ID,
-     * call onSuccess callback so the parent component can handle the next step which is
-     * storing the payment method details
-     */
-    if (onSuccess && setupIntent.payment_method) {
-      onSuccess(setupIntent.payment_method as string);
-    }
-  };
+    return;
+  }
+
+  // console.log("clientSecret:", clientSecret);
+
+  /**
+   * Confirms the SetupIntent using the card details and billing info.
+   * This step securely exchanges card data with Stripe.
+   * https://docs.stripe.com/js/setup_intents/confirm_card_setup#stripe_confirm_card_setup-options
+   * */
+  const { setupIntent, error } = await stripe.confirmCardSetup(clientSecret, {
+    payment_method: {
+      card,
+      billing_details: { address: { postal_code: postalCode } },
+    },
+  });
+
+  setLoading(false);
+  // If Stripe returned an error during confirmation, surface it to the user.
+  if (error) {
+    setError(error.message || "Something went wrong");
+    return;
+  }
+  /**
+   * If the SetupIntent completed successfully and Stripe returned a payment method ID,
+   * call onSuccess callback so the parent component can handle the next step which is
+   * storing the payment method details
+   */
+  if (onSuccess && setupIntent.payment_method) {
+    onSuccess(setupIntent.payment_method as string);
+  }
+};
 ```
 
 Stripe processes the card securely and returns either an error or a successful SetupIntent containing a 'payment_method' ID.
 
 If successful, the component passes that payment method ID back to the parent component through the 'onSuccess' callback so it can be saved in the backend.
 
-To recpa, when the user submits their card, 'StripeCheckOut' confirms the 'SetupIntent' with Stripe and returns the 'paymentMethodId' through the onSuccess callback. The parent (**stripeCheckOutModal.tsx**) receives that ID, saves it to the backend using **savePaymentMethodApi.js**, and then calls its own 'onSuccess' prop to notify the next-level parent component, **roomDetailsPage.tsx**, to continue the booking process:
+To recap, when the user submits their card, 'StripeCheckOut' confirms the 'SetupIntent' with Stripe and returns the 'paymentMethodId' through the onSuccess callback. The parent (**stripeCheckOutModal.tsx**) receives that ID, saves it to the backend using **savePaymentMethodApi.js**, and then calls its own 'onSuccess' prop to notify the next-level parent component, **roomDetailsPage.tsx**, to continue the booking process:
 
-```
+```ts
 roomDetailsPage.tsx excerpt
 
           {/* Stripe Payment Dialog opens after validation and before booking creation */}
@@ -3102,22 +3084,21 @@ This file in **components/roomReviews/roomReviews.tsx** displays user reviews fo
 
 It starts by receiving the roomId as a prop to fetch the room reviews
 
-```
+```ts
 /**
-   * React Query is a data-fetching and caching library that simplifies working with
-   * asynchronous data in React applications. Instead of manually managing loading states,
-   * errors, caching, refetching, and background updates, React Query handles all of this
-   * automatically. This results in cleaner components, fewer bugs, and a much smoother UX.
-   * React Query v5 is the latest, actively maintained version of TanStack Query.
-   * It introduces a simpler, more consistent API using a single options object:
-   *
-   *    useQuery({ queryKey: [...], queryFn: ... })
-   *
-   * https://tanstack.com/query/latest/docs/framework/react/reference/useQuery
-   * https://tanstack.com/query/latest/docs/framework/react/quick-start
-   * */
-  const { data: reviews, isLoading, error } = useRoomReviews(roomId);
-
+ * React Query is a data-fetching and caching library that simplifies working with
+ * asynchronous data in React applications. Instead of manually managing loading states,
+ * errors, caching, refetching, and background updates, React Query handles all of this
+ * automatically. This results in cleaner components, fewer bugs, and a much smoother UX.
+ * React Query v5 is the latest, actively maintained version of TanStack Query.
+ * It introduces a simpler, more consistent API using a single options object:
+ *
+ *    useQuery({ queryKey: [...], queryFn: ... })
+ *
+ * https://tanstack.com/query/latest/docs/framework/react/reference/useQuery
+ * https://tanstack.com/query/latest/docs/framework/react/quick-start
+ * */
+const { data: reviews, isLoading, error } = useRoomReviews(roomId);
 ```
 
 using the **hooks/useRoomReviews.ts** which uses React Query to fetch and cash the reviews data through the getRoomReviews() API in **review-api.ts**, as explained in the 'Room Details Page' paraghraph.
@@ -3125,17 +3106,16 @@ using the **hooks/useRoomReviews.ts** which uses React Query to fetch and cash t
 At this point, we create the useState() to manage how many reviews are displayed. By default, only the first two are shown, and showAll toggles whether to display all reviews.
 This keeps the UI concise while allowing users to expand the list.
 
-```
-  // We create this useState to show more than 2 reviews on the roomDetailsPage
-  const [showAll, setShowAll] = useState(false);
-  // The visibleReviews will be 'sliced' to 2
-  const visibleReviews = showAll ? reviews : reviews?.slice(0, 2);
-
+```ts
+// We create this useState to show more than 2 reviews on the roomDetailsPage
+const [showAll, setShowAll] = useState(false);
+// The visibleReviews will be 'sliced' to 2
+const visibleReviews = showAll ? reviews : reviews?.slice(0, 2);
 ```
 
 The below loop will render each visible review, including the guest’s name, star rating, comment, and the date. This is where the fetched data is transformed into the visible UI elements.
 
-```
+```ts
    {visibleReviews?.map((review) => {
         // console.log("PROFILE:", review.profile, "USER_ID:", review.user_id);
 
@@ -3156,9 +3136,7 @@ The below loop will render each visible review, including the guest’s name, st
 
 The expression {"★".repeat(review.rating)}, then, generates a string of filled star characters equal to the review.rating number. For example, if review.rating is 3, it produces "★★★". This is used to visually represent the review score.
 
-This line allows the user to toggle between showing just a few reviews or all reviews, updating the showAll state and re-rendering the list accordingly.
-
-```
+```ts
     {/* Star rating */}
               <Typography sx={{ color: "#e26d5c", fontWeight: 600 }}>
                 {"★".repeat(review.rating)}
@@ -3205,13 +3183,13 @@ The show more/less block appears only if there are more than two reviews and tog
 
 ## Booking Confirmation page
 
-The **bookingConfirmationPage.tsx** is the page whre the guest will land upon getting their Stripe setupIntent successully completed.
+The **bookingConfirmationPage.tsx** is the page where the guest will land to upon getting their Stripe setupIntent successully completed.
 
 ![alt text](image-37.png)
 
 It starts by extracting the booking ID from the URL with 'useParams()' and gets the current logged-in user from 'AuthContext'. This is crucial because only the user who made the booking should see this page.
 
-```
+```ts
 const BookingConfirmationPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -3225,49 +3203,47 @@ The component uses the 'useQuery' hooks from React Query to fetch the necessary 
 
 First, 'bookingQuery' fetches the booking itself, then 'profileQuery' fetches the guest’s profile based on the booking, and 'roomQuery' fetches the room details. The queries are conditional ('enabled') to ensure that each depends on the data from the previous query, avoiding unnecessary requests.
 
-```
+```ts
 /**
-   * Once again we make use of the useQuery() function to catch data
-   * from the 'bookings' table in Supabase through the 'getConfirmationBooking'
-   * function in the 'guestease-api.tsx' file
-   * https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
-   */
-  const bookingQuery = useQuery({
-    queryKey: ["booking", id],
-    enabled: !!id,
-    queryFn: () => getConfirmationBooking(id as string),
-  });
+ * Once again we make use of the useQuery() function to catch data
+ * from the 'bookings' table in Supabase through the 'getConfirmationBooking'
+ * function in the 'guestease-api.tsx' file
+ * https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
+ */
+const bookingQuery = useQuery({
+  queryKey: ["booking", id],
+  enabled: !!id,
+  queryFn: () => getConfirmationBooking(id as string),
+});
 
-  /**
-   * We make use of the useQuery() function to catch data
-   * from the 'profiles' table in Supabase through the 'getUserProfile'
-   * function in the 'guestease-api.tsx' file
-   * https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
-   */
-  const profileQuery = useQuery({
-    queryKey: ["profile", bookingQuery.data?.user_id],
-    enabled: !!bookingQuery.data?.user_id,
-    queryFn: () => getUserProfile(bookingQuery.data!.user_id),
-  });
+/**
+ * We make use of the useQuery() function to catch data
+ * from the 'profiles' table in Supabase through the 'getUserProfile'
+ * function in the 'guestease-api.tsx' file
+ * https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
+ */
+const profileQuery = useQuery({
+  queryKey: ["profile", bookingQuery.data?.user_id],
+  enabled: !!bookingQuery.data?.user_id,
+  queryFn: () => getUserProfile(bookingQuery.data!.user_id),
+});
 
-  /**
-   * We make use of the useQuery() function to catch data
-   * from the 'rooms' table in Supabase through the 'getRoomById'
-   * function in the 'guestease-api.tsx' file
-   * https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
-   */
-  const roomQuery = useQuery({
-    queryKey: ["room", bookingQuery.data?.room_id],
-    enabled: !!bookingQuery.data?.room_id,
-    queryFn: () => getRoomById(bookingQuery.data!.room_id),
-  });
-
-
+/**
+ * We make use of the useQuery() function to catch data
+ * from the 'rooms' table in Supabase through the 'getRoomById'
+ * function in the 'guestease-api.tsx' file
+ * https://tanstack.com/query/v4/docs/framework/react/reference/useQuery
+ */
+const roomQuery = useQuery({
+  queryKey: ["room", bookingQuery.data?.room_id],
+  enabled: !!bookingQuery.data?.room_id,
+  queryFn: () => getRoomById(bookingQuery.data!.room_id),
+});
 ```
 
 We leveraged the API functions in **guestease-api.ts** in the above mentioned useQuery() through we fetch the needed data from the Supabase tables:
 
-```
+```ts
 
 /**
  * This is a helper to fetch the confirmation booking data to populate
@@ -3329,20 +3305,19 @@ export const getRoomById = async (roomId: string) => {
 
 As the booking confirmation card on the left shows the total number of nights, it is noteworthy to mention the **util/calculateNumberOfNights.tsx** utility that was used to be able to display the total price and nights of stay.
 
-```
+```ts
 // We calculate the number of nights
-  const totalNights = bookingQuery.data
-    ? calculateNumberOfNights(
-        bookingQuery.data.check_in,
-        bookingQuery.data.check_out,
-      )
-    : 0;
-
+const totalNights = bookingQuery.data
+  ? calculateNumberOfNights(
+      bookingQuery.data.check_in,
+      bookingQuery.data.check_out,
+    )
+  : 0;
 ```
 
 In here, we are using the ternary operator so that if the bookingQuery data exists, we will calculate the number of nights through the below 'calculateNumberOfNights' function:
 
-```
+```ts
 /**
  * This util will calculate the number of nights of each booking
  */
@@ -3356,7 +3331,6 @@ export function calculateNumberOfNights(checkIn: string, checkOut: string) {
   const nights = Math.max(0, (end - start) / (1000 * 60 * 60 * 24));
   return nights;
 }
-
 ```
 
 Overall, this page ensures that users see all the relevant details of their booking in a secure, responsive, and visually appealing way, while handling asynchronous data, authorization, and edge cases like missing or incorrect data.
@@ -3368,14 +3342,13 @@ Overall, this page ensures that users see all the relevant details of their book
 
 ## Account My Trips page
 
-This **accountMyTripsPage.tsx** renders the '/account/mytrips page of the application where a logged-in user can view and manage their reservations.
+This **accountMyTripsPage.tsx** renders the '/account/mytrips' page of the application where a logged-in user can view and manage their reservations.
 
 ![alt text](image-38.png)
 
 It gets the authenticated user from 'AuthContext', fetches the user’s bookings from the backend using React Query,
 
-```
-
+```ts
 /**
  * The AccountMyTripsPage displays all upcoming and past reservations.
  */
@@ -3387,69 +3360,65 @@ const AccountMyTripsPage: React.FC = () => {
   // We then retrieve the 'profile' user from the 'profiles' table in supabase
   // since this is the one that has the stripe_customer_id column
   const { data: profile } = useUserProfile(user?.id);
-
 ```
 
 and retrieves the user profile (which contains the Stripe customer ID).
 
 React Query manages the asynchronous data fetching, caching, loading state, and automatic refetching when bookings are updated or cancelled.
 
-```
+```ts
 const { data, error, isLoading } = useQuery<Booking[]>({
-    queryKey: ["bookings", user?.id],
-    // Only run this query when a user is logged in.
-    // '!!user?.id' converts the value to a boolean:
-    enabled: !!user?.id,
-    queryFn: () => getUserBookings(user!.id),
-    /**
-     * Force refetch on navigation, as we set  staleTime: 5 * 60 * 1000
-     * in the main.tsx file
-     */
-    staleTime: 0,
-  });
-
+  queryKey: ["bookings", user?.id],
+  // Only run this query when a user is logged in.
+  // '!!user?.id' converts the value to a boolean:
+  enabled: !!user?.id,
+  queryFn: () => getUserBookings(user!.id),
+  /**
+   * Force refetch on navigation, as we set  staleTime: 5 * 60 * 1000
+   * in the main.tsx file
+   */
+  staleTime: 0,
+});
 ```
 
 Once the bookings are loaded, the component separates them into **upcoming** and **past** reservations by comparing each booking’s 'check_out' date with today’s date.
 
-```
+```ts
 // Creating the useState for the tabs
-  // https://mui.com/material-ui/react-tabs/
-  const [tabValue, setTabValue] = useState(0);
+// https://mui.com/material-ui/react-tabs/
+const [tabValue, setTabValue] = useState(0);
 
-  /**
-   * As we set up upcoming and past bookings tabs, we need to be able to filter
-   * the bookings based on their ceck out date to establish whether they are upcoming or
-   * past ones.
-   */
-  const today = new Date();
+/**
+ * As we set up upcoming and past bookings tabs, we need to be able to filter
+ * the bookings based on their ceck out date to establish whether they are upcoming or
+ * past ones.
+ */
+const today = new Date();
 
-  /**
-   * We create an array of bookings which are upcoming ones
-   * The check_out date must be bigger than today's date
-   */
-  const upcomingBookings = (data ?? []).filter((b) => {
-    const checkout = new Date(b.check_out);
-   // console.log("Upcoming: ", checkout >= today);
-    return checkout >= today;
-  });
+/**
+ * We create an array of bookings which are upcoming ones
+ * The check_out date must be bigger than today's date
+ */
+const upcomingBookings = (data ?? []).filter((b) => {
+  const checkout = new Date(b.check_out);
+  // console.log("Upcoming: ", checkout >= today);
+  return checkout >= today;
+});
 
-  /**
-   * We create an array of bookings which are past ones
-   * The check_out date must be older than today's date
-   */
-  const pastBookings = (data ?? []).filter((b) => {
-    const checkout = new Date(b.check_out);
-   // console.log("Past: ", checkout < today);
-    return checkout < today;
-  });
-
+/**
+ * We create an array of bookings which are past ones
+ * The check_out date must be older than today's date
+ */
+const pastBookings = (data ?? []).filter((b) => {
+  const checkout = new Date(b.check_out);
+  // console.log("Past: ", checkout < today);
+  return checkout < today;
+});
 ```
 
 These are displayed in two tabs using Material UI, and each booking is rendered as a 'BookedRoomCard' component.
 
-```
-
+```tsx
   /**
    * This helper function renders a list of bookings for either the 'upcoming' or 'past' tab.
    * If the provided bookings array is empty, it displays a friendly message indicating that
@@ -3486,7 +3455,7 @@ These are displayed in two tabs using Material UI, and each booking is rendered 
 
 The below code shows the 'bookedRoomCard' component which gets 'mapped' so that all 'bookings' will be rendered:
 
-```
+```ts
 >
           {bookings.map((booking) => (
             <BookedRoomCard
@@ -3505,20 +3474,15 @@ The below code shows the 'bookedRoomCard' component which gets 'mapped' so that 
 
 As can be seen in the above component, the user can edit edit the booking:
 
-```
 ![alt text](image-39.png)
-
-
-```
 
 When the user clicks on the 'UPDATE' button on a booking card, the booking is stored in state and the edit dialog opens. This lets the user modify dates, guests, or room details.
 
-```
+```ts
 const handleUpdate = (booking: any) => {
   setSelectedBooking(booking);
   setOpen(true);
 };
-
 ...
 
   <EditBookingDialog
@@ -3531,12 +3495,11 @@ const handleUpdate = (booking: any) => {
         />
 
 ...
-
 ```
 
 When the user saves their changes in the dialog, the handleSave function runs. It compares the original total price with the new total price to see if the booking modification increased the cost.
 
-```
+```ts
 const handleSave = (updatedBooking: {
   id: any;
   room_id: any;
@@ -3550,13 +3513,11 @@ const handleSave = (updatedBooking: {
   const originalToTalPrice = selectedBooking.total_price;
   const updatedTotalPrice = updatedBooking.total_price;
   const amountDifference = updatedTotalPrice - originalToTalPrice;
-
 ```
 
 If the new booking is more expensive, the update cannot be completed immediately. Instead, the system stores the pending update and opens the Stripe checkout modal so the user can confirm payment for the difference.
 
-```
-
+```ts
 if (amountDifference > 0) {
   setPendingUpdateData({
     ...updatedBooking,
@@ -3565,13 +3526,11 @@ if (amountDifference > 0) {
   setStripeCheckOutModalOpen(true);
   return;
 }
-
 ```
 
 If the price did not increase, the booking is updated immediately using a React Query mutation, which sends the update to the backend and refreshes cached booking data.
 
-```
-
+```ts
   // React Query mutation hook for updating a booking.
   // Encapsulates the API call and handles cache invalidation internally.
   const updateBookingMutation = useUserUpdateBooking();
@@ -3593,7 +3552,7 @@ updateBookingMutation.mutate({
 
 The 'updateBookingMutation' call in the below 'useUserUpdateBooking()' hook in **useUserUpdateBooking.ts**
 
-```
+```ts
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateBookingApi } from "../api/user-booking-api";
 
@@ -3626,12 +3585,11 @@ export function useUserUpdateBooking() {
     },
   });
 }
-
 ```
 
 The hook mutates what returned by the updateBookingApi() function in the **user-booking-api.ts**
 
-```
+```ts
 /**
  * Update Booking
  * This is a helper which sends a POST request to the backend to update an existing booking.
@@ -3678,65 +3636,62 @@ export const updateBookingApi = async (updateData: {
   // Return the updated booking data to the caller.
   return data;
 };
-
 ```
 
 which, in turn, calls the backend route **userUpdateBookings.ts** to execute the update straight into Supabase
 
-```
-  /**
-     * Updating the booking and
-     * https://supabase.com/docs/reference/javascript/update
-     */
-    const { data: updatedBooking, error: updateErr } = await supabase
-      .from("bookings")
-      .update({
-        ...updates,
-        total_price: newTotal,
-      })
-      .eq("id", bookingId)
-      .eq("user_id", userId)
-      // We are selecting the booking but also join the related profile row that belongs to this booking
-      .select("*, profiles!bookings_user_id_fkey(*)")
-      .single();
-
+```js
+/**
+ * Updating the booking and
+ * https://supabase.com/docs/reference/javascript/update
+ */
+const { data: updatedBooking, error: updateErr } = await supabase
+  .from("bookings")
+  .update({
+    ...updates,
+    total_price: newTotal,
+  })
+  .eq("id", bookingId)
+  .eq("user_id", userId)
+  // We are selecting the booking but also join the related profile row that belongs to this booking
+  .select("*, profiles!bookings_user_id_fkey(*)")
+  .single();
 ```
 
 At this points, once the booking has been succesfully implemented, an email is sent off to the user to notify them
 
-```
- // Extrapolating the profile, and number of guests from the updatedBooking
-    const { guests, profiles: profile } = updatedBooking;
+```js
+// Extrapolating the profile, and number of guests from the updatedBooking
+const { guests, profiles: profile } = updatedBooking;
 
-    // Fetching the GuestEase logo from Supabase storage
-    const logoUrl = getPublicUrl("assets", "GuestEaseLogo.png");
+// Fetching the GuestEase logo from Supabase storage
+const logoUrl = getPublicUrl("assets", "GuestEaseLogo.png");
 
-    // Generate email HTML and passing through all needed parameters
-    const html = bookingUpdatedTemplate({
-      profile,
-      room,
-      check_in: updates.check_in,
-      check_out: updates.check_out,
-      total_price: newTotal,
-      logoUrl,
-      guests,
-      booking_id: bookingId,
-      total_nights,
-    });
+// Generate email HTML and passing through all needed parameters
+const html = bookingUpdatedTemplate({
+  profile,
+  room,
+  check_in: updates.check_in,
+  check_out: updates.check_out,
+  total_price: newTotal,
+  logoUrl,
+  guests,
+  booking_id: bookingId,
+  total_nights,
+});
 
-    // Send email vua emailUtil.js
-    await fetch(`${backendUrl}/send_email`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: profile.email,
-        subject: `Your Booking Update for ${room.name} at GuestEase`,
-        body: html,
-      }),
-    });
+// Send email vua emailUtil.js
+await fetch(`${backendUrl}/send_email`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    email: profile.email,
+    subject: `Your Booking Update for ${room.name} at GuestEase`,
+    body: html,
+  }),
+});
 
-    return res.json({ success: true, booking: updatedBooking, newTotal });
-
+return res.json({ success: true, booking: updatedBooking, newTotal });
 ```
 
 Email template have been stored in the backens util **emailTemplate.js**, which are triggered through the route **emailUtil.js** (We will later dive into it).
@@ -3747,8 +3702,7 @@ If a payment was required, the Stripe modal completes first.
 
 After Stripe confirms the payment method, the handlePaymentSuccessSoUpdateNow() function is triggered. This builds the final payload and performs the booking update.
 
-```
-
+```ts
   // This useState will enable us to manage the StripeCheckoutModal
   const [stripeCheckOutModalOpen, setStripeCheckOutModalOpen] = useState(false);
   /**
@@ -3816,21 +3770,19 @@ In summary, the update flow works like this: the user edits a booking → the sy
 
 As far as the booking cancellation flow, the process starts when the user clicks the cancel button on a booking card. At that point the selected booking is stored in state and a confirmation dialog is opened.
 
-```
-
+```ts
 // This useState is used to open and close the modal
-  const [deleteOpen, setDeleteOpen] = useState(false);
+const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const handleDeleteOpen = (booking: any) => {
-    setSelectedBooking(booking);
-    setDeleteOpen(true);
-  };
-
+const handleDeleteOpen = (booking: any) => {
+  setSelectedBooking(booking);
+  setDeleteOpen(true);
+};
 ```
 
 This function is passed to each BookedRoomCard, so when the user clicks cancel, the booking becomes the selectedBooking and the confirmation modal appears.
 
-```
+```ts
 <BookedRoomCard
   key={booking.id}
   booking={booking}
@@ -3840,12 +3792,11 @@ This function is passed to each BookedRoomCard, so when the user clicks cancel, 
   handleReview={(id) => navigate(`/review/${id}`)}
   type={type}
 />
-
 ```
 
 Before deleting the booking, the application asks the user to confirm the action using a dialog component. This prevents accidental cancellations.
 
-```
+```ts
 <AlertDialogSlide
   open={deleteOpen}
   onClose={() => setDeleteOpen(false)}
@@ -3864,13 +3815,13 @@ Before deleting the booking, the application asks the user to confirm the action
 
 When the user confirms, the code calls a React Query mutation
 
-```
+```ts
 const cancelBookingMutation = useUserCancelBooking(user?.id);
 ```
 
 using the useUserCancelBooking() hook in **useUserCancelBooking.ts**.
 
-```
+```ts
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cancelBookingApi } from "../api/user-booking-api";
 
@@ -3897,12 +3848,11 @@ export function useUserCancelBooking(userId: string | undefined) {
     },
   });
 }
-
 ```
 
 This sends the booking ID to the backend API via the cancelBookingApi() function in the **user-booking-api.ts** to delete or cancel the reservation:
 
-```
+```ts
 /**
  * Cancel Booking
  * This is a helper which sends a POST request to the backend to cancel an existing booking.
@@ -3930,42 +3880,39 @@ export const cancelBookingApi = async (bookingId: string) => {
      */
     body: JSON.stringify({ bookingId }),
   });
-
 ```
 
 The backend route **userCancelBooking.js** will first extrapolate the 'bookingId' to delete from the request body.
 
-```
+```js
 router.post("/user/cancel-booking", async (req, res) => {
   const { bookingId } = req.body;
-
 ```
 
-Then, we create the date variables needed to calculate the 'cutoff' time (within 24h from the check_in) when the booking cancellation isno longer allowed per stay policy.
+Then, we create the date variables needed to calculate the 'cutoff' time (within 24h from the check_in) when the booking cancellation is no longer allowed per stay policy.
 
-```
-  /**
-   * We add the same logic applied in the bookedRoomCard for security purposes
-   */
-  const now = new Date();
-  const checkIn = new Date(booking.check_in);
-  const cutoff = new Date(checkIn.getTime() - 24 * 60 * 60 * 1000);
+```js
+/**
+ * We add the same logic applied in the bookedRoomCard for security purposes
+ */
+const now = new Date();
+const checkIn = new Date(booking.check_in);
+const cutoff = new Date(checkIn.getTime() - 24 * 60 * 60 * 1000);
 
-   /**
-   * We are preventing the user from being able to cancel a reservation
-   * after the 24h before check-in cutoff period.
-   */
-  if (now >= cutoff) {
-    return res.status(400).json({
-      error: "This reservation can no longer be cancelled.",
-    });
-  }
-
+/**
+ * We are preventing the user from being able to cancel a reservation
+ * after the 24h before check-in cutoff period.
+ */
+if (now >= cutoff) {
+  return res.status(400).json({
+    error: "This reservation can no longer be cancelled.",
+  });
+}
 ```
 
 Finally, the backend operates the booking cancellation in Supabase
 
-```
+```js
 try {
     // Cancel booking https://supabase.com/docs/reference/javascript/delete
     const { error: bookingError } = await supabase
@@ -3988,40 +3935,39 @@ In summary, the cancellation flow works as follows: the user clicks cancel on a 
 
 Just like for the booking update flow, the cancellation booking flow will end with an email notification sent off to the user to notify them that the cancellation is successfull:
 
-```
- const profile = booking.profiles;
+```js
+const profile = booking.profiles;
 
-    // Fetching the GuestEase logo from Supabase storage
-    const logoUrl = getPublicUrl("assets", "GuestEaseLogo.png");
+// Fetching the GuestEase logo from Supabase storage
+const logoUrl = getPublicUrl("assets", "GuestEaseLogo.png");
 
-    // Generate email HTML and passing through all needed parameters
-    const html = bookingCancelledTemplate({
-      profile,
-      room,
-      check_in: booking.check_in,
-      check_out: booking.check_out,
-      logoUrl,
-      booking_id: bookingId,
-      total_nights,
-      total_price,
-    });
+// Generate email HTML and passing through all needed parameters
+const html = bookingCancelledTemplate({
+  profile,
+  room,
+  check_in: booking.check_in,
+  check_out: booking.check_out,
+  logoUrl,
+  booking_id: bookingId,
+  total_nights,
+  total_price,
+});
 
-    // Send email vua emailUtil.js
-    await fetch(`${backendUrl}/send_email`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: profile.email,
-        subject: `Your Booking for ${room.name} at GuestEase has been cancelled 😔`,
-        body: html,
-      }),
-    });
+// Send email vua emailUtil.js
+await fetch(`${backendUrl}/send_email`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    email: profile.email,
+    subject: `Your Booking for ${room.name} at GuestEase has been cancelled 😔`,
+    body: html,
+  }),
+});
 
-    res.json({
-      status: "success",
-      message: `Booking ${bookingId} cancelled successfully!`,
-    });
-
+res.json({
+  status: "success",
+  message: `Booking ${bookingId} cancelled successfully!`,
+});
 ```
 
 ### Source attributions
@@ -4038,7 +3984,7 @@ Just like for the booking update flow, the cancellation booking flow will end wi
 
 The 'UserProfilePage' displays and manages the logged-in user’s profile information in the GuestEase application. It retrieves authentication data from AuthContext, which provides the current user and a loading state while authentication initializes.
 
-```
+```ts
 const UserProfilePage: React.FC = () => {
   /**
    * Access authentication state from AuthContext.
@@ -4051,18 +3997,17 @@ const UserProfilePage: React.FC = () => {
 
 Once the user is available, the component uses React Query’s useQuery hook to fetch the user’s profile from the backend. The query is keyed with ["profile", user?.id] so the data is cached and automatically refetched if the user ID changes.
 
-```
+```ts
 const { data: profile } = useQuery<User>({
   // We have a supabase 'profiles' table with user data stored in it
   queryKey: ["profile", user?.id],
   queryFn: () => getUserProfile(user!.id), // Calling in an api function to fetch a specific user in 'guestease-api'
 });
-
 ```
 
 The useQuery() function calls in the API function getUserProfile() in the file **guestease-api.ts**
 
-```
+```ts
 /**
  * Fetch a single user profile from the Supabase "profiles" table.
  * Requires the authenticated user's ID.
@@ -4077,49 +4022,46 @@ export const getUserProfile = async (userId: string) => {
   if (error) throw new Error(error.message);
   return data;
 };
-
 ```
 
 The fetched profile data is then synchronized with local state (formData) using useEffect. This allows the form fields in the edit dialog to always reflect the latest profile values.
 
-```
- /**
-   * When the profile data is fetched or updated, we sync it into local form state.
-   * The actual database sync between 'profiles' and 'auth.users' is handled by a
-   * PostgreSQL trigger 'on_profile_updated'.
-   * This effect keeps the form fields up to date with the latest profile values.
-   */
-  useEffect(() => {
-    if (profile) {
-      setFormData({
-        first_name: profile.first_name,
-        last_name: profile.last_name,
-        country: profile.country,
-        zip_code: profile.zip_code,
-      });
-    }
-  }, [profile]);
-
+```ts
+/**
+ * When the profile data is fetched or updated, we sync it into local form state.
+ * The actual database sync between 'profiles' and 'auth.users' is handled by a
+ * PostgreSQL trigger 'on_profile_updated'.
+ * This effect keeps the form fields up to date with the latest profile values.
+ */
+useEffect(() => {
+  if (profile) {
+    setFormData({
+      first_name: profile.first_name,
+      last_name: profile.last_name,
+      country: profile.country,
+      zip_code: profile.zip_code,
+    });
+  }
+}, [profile]);
 ```
 
 To update the profile, the component uses a custom hook that wraps React Query’s useMutation, allowing the app to send updated user data to the backend and handle server-side changes.
 
-```
+```ts
 /**
-   * We create a 'updateProfileMutation' function with useMutation.
-   * 'mutations are typically used to create/update/delete data
-   * or perform server side-effects. For this purpose,
-   * TanStack Query exports a useMutation hook.'
-   * It wraps our the 'deleteUserApi' function in 'guestease-api.ts'
-   * https://tanstack.com/query/v4/docs/framework/react/guides/mutations
-   */
-  const updateProfileMutation = useUserUpdateProfile(user?.id);
-
+ * We create a 'updateProfileMutation' function with useMutation.
+ * 'mutations are typically used to create/update/delete data
+ * or perform server side-effects. For this purpose,
+ * TanStack Query exports a useMutation hook.'
+ * It wraps our the 'deleteUserApi' function in 'guestease-api.ts'
+ * https://tanstack.com/query/v4/docs/framework/react/guides/mutations
+ */
+const updateProfileMutation = useUserUpdateProfile(user?.id);
 ```
 
 This leverages the useUserUpdateProfile() hook **hooks/useUserUpdateProfile.ts**
 
-```
+```ts
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateUserProfile } from "../api/guestease-api";
 import { User } from "../types/interfaces"; // adjust path
@@ -4147,12 +4089,11 @@ export function useUserUpdateProfile(userId: string | undefined) {
     },
   });
 }
-
 ```
 
-which in turn mutates the profile data via the updateUserProfile() function in the **guestease-api.tsx**
+which in turn mutates the profile data via the updateUserProfile() function in the **guestease-api.tsx**. It was safe to do that client-side because of the Supabase RLS set up.
 
-```
+```ts
 /**
  * This API function will allow us to get user data updated
  */
@@ -4170,12 +4111,11 @@ export async function updateUserProfile(
   if (error) throw error;
   return data;
 }
-
 ```
 
 The UI displays profile details such as name, email, country, and join date using Material UI components, and provides buttons for editing or deleting the profile. When editing, an EditProfileDialog modal opens and saves the changes by triggering the mutation:
 
-```
+```ts
  {/* This is the pop up where we edit the user data */}
         <EditProfileDialog
           open={open}
@@ -4193,23 +4133,23 @@ The UI displays profile details such as name, email, country, and join date usin
 
 For account deletion, we will still use React useMutation.
 
-```
- /**
-   * We create a 'deleteUser' function with useMutation.
-   * 'mutations are typically used to create/update/delete data
-   * or perform server side-effects. For this purpose,
-   * TanStack Query exports a useMutation hook.'
-   * It wraps our the 'deleteUserApi' function in 'guestease-api.ts'
-   * https://tanstack.com/query/v4/docs/framework/react/guides/mutations
-   */
-  const deleteUser = useMutation({
-    mutationFn: deleteUserApi,
-  });
+```ts
+/**
+ * We create a 'deleteUser' function with useMutation.
+ * 'mutations are typically used to create/update/delete data
+ * or perform server side-effects. For this purpose,
+ * TanStack Query exports a useMutation hook.'
+ * It wraps our the 'deleteUserApi' function in 'guestease-api.ts'
+ * https://tanstack.com/query/v4/docs/framework/react/guides/mutations
+ */
+const deleteUser = useMutation({
+  mutationFn: deleteUserApi,
+});
 ```
 
 However, the component first checks the Supabase bookings table to ensure the user has no active bookings (where check_out is in the future). If active bookings exist, the deletion is blocked to protect booking integrity.
 
-```
+```ts
  <AlertDialogSlide
           open={deleteOpen}
           onClose={() => setDeleteOpen(false)}
@@ -4264,7 +4204,7 @@ If no active bookings are found, the deleteUser mutation removes the account, si
 
 To do so, though, it uses the deleteUserApi() function in the **guestease-api.ts** function,
 
-```
+```ts
 /**
  * This API function will first find tha uthorized user, and will then 'post'
  * a request to the backend userDeleteAccount.js
@@ -4306,13 +4246,11 @@ export const deleteUserApi = async (userId: string) => {
   // Return the booking data to the caller.
   return result;
 };
-
-
 ```
 
 which relies on the backend route **userDeleteAccount.js**, as advised in the Supabase documentation
 
-```
+```js
  try {
     // Delete profile row
     // This will fail automatically if bookings still exist (ON DELETE RESTRICT)
@@ -4624,7 +4562,7 @@ export const submitReview = async (payload: {
 };
 ```
 
-The 'handleSubmit()' function will submit the review to initiate the mutation:
+Back to the Review page, the 'handleSubmit()' function will submit the review to initiate the mutation:
 
 ```ts
 const submitReviewMutation = useSubmitReview();
@@ -4692,7 +4630,7 @@ In essence what we are doing here is:
 - Invalidating the room query to refresh the data
 - Redirecting the user to the room page after a short delay
 
-The email notofication sent out to the Admin is the last step of the flow:
+The email notification sent out to the Admin is the last step of the flow:
 
 ![alt text](image-60.png)
 
@@ -4704,7 +4642,7 @@ The email notofication sent out to the Admin is the last step of the flow:
 
 ## Admin Booking page
 
-If the user has their 'role' in the Supabase 'profiles' table and the auth.users section set to 'admin', they will have access to the below link in the **userDrawerProfile.tsx** file:
+If the user has their 'role' in the Supabase 'profiles' table and the auth.users section set to 'admin', they will have access to the below link 'View Admin Dashboard' in the **userDrawerProfile.tsx** file:
 
 ![alt text](image-46.png)
 
@@ -4773,7 +4711,6 @@ AS $$
   FROM public.profiles
   WHERE id = uid;
 $$;
-
 ```
 
 This function is then used inside RLS policies to grant administrators elevated permissions. For example, the following policy allows administrators to read all user profiles, rather than only their own.
@@ -4785,7 +4722,6 @@ CREATE POLICY "Admins can select all profiles"
 ON public.profiles
 FOR SELECT
 USING (public.is_admin(auth.uid()));  -- Admin can read all rows
-
 ```
 
 Additional policies allow administrators to update or delete any profile, or read all users' reviews on the Room Details page:
@@ -4814,7 +4750,6 @@ on profiles
 for select
 to authenticated
 using (true);
-
 ```
 
 Because these policies use the 'is_admin()' function, only users whose profile role is 'admin' can access all rows in the profiles table and perform admin-level actions on profiles.
@@ -4917,7 +4852,7 @@ export default AdminRoute;
 
 Regular users with the role 'guest' are limited by RLS policies to only read, update, or delete their own profile data.
 
-```
+```postgresql
 -- USERS: SELECT
 -- https://www.postgresql.org/docs/current/ddl-rowsecurity.html
 DROP POLICY IF EXISTS "Users can select their own profile" ON public.profiles;
@@ -4952,9 +4887,9 @@ Going back to the **adminBookingsPage.tsx**,
 
 the page is responsible for displaying and managing all bookings within the GuestEase admin dashboard. It allows administrators to view, create, update, and delete bookings (CRUD) through a structured interface built with React and Material UI.
 
-The page manages several pieces of state using `useState`, which control elements such as modals, confirmation dialogs, Stripe payment data, snackbar notifications, and booking filters.
+The page manages several pieces of state using 'useState', which control elements such as modals, confirmation dialogs, Stripe payment data, snackbar notifications, and booking filters.
 
-```
+```ts
 const AdminBookingsPage: React.FC = () => {
   // Controls visibility of the booking modal
   const [openBookingModal, setOpenBookingModal] = useState(false);
@@ -5002,34 +4937,32 @@ const AdminBookingsPage: React.FC = () => {
 
 Data for bookings and rooms is retrieved using React Query’s 'useQuery()' hook. This simplifies asynchronous data fetching by handling loading states, caching, and background refetching automatically.
 
-```
- const {
-    data: bookings,
-    isLoading: bookingsLoading,
-    error: bookingsError,
-  } = useQuery({
-    queryKey: ["bookings"],
-    queryFn: getAllBookings,
-    // This will ensure React Query will refetch data, to avoid stale data
-    // so that new bookigs are always synced
-    refetchOnMount: "always",
-  });
+```ts
+const {
+  data: bookings,
+  isLoading: bookingsLoading,
+  error: bookingsError,
+} = useQuery({
+  queryKey: ["bookings"],
+  queryFn: getAllBookings,
+  // This will ensure React Query will refetch data, to avoid stale data
+  // so that new bookigs are always synced
+  refetchOnMount: "always",
+});
 
-  const {
-    data: rooms,
-    isLoading: roomsLoading,
-    error: roomsError,
-  } = useQuery({
-    queryKey: ["rooms"],
-    queryFn: getRooms,
-  });
-
-
+const {
+  data: rooms,
+  isLoading: roomsLoading,
+  error: roomsError,
+} = useQuery({
+  queryKey: ["rooms"],
+  queryFn: getRooms,
+});
 ```
 
 The 'getAllBookings' and 'getRooms' API functions in **guestease-api.ts** retrieve the required data from the backend.
 
-```
+```ts
  /**
  * React Query Fetchers
  * We fetach all bookings through the rpc 'get_all_bookings' which is a function
@@ -5068,7 +5001,7 @@ Let's take a close look at the 'getAllBookings()' function now.
 
 The 'bookings' table in Supabase is built out through the below SQL script:
 
-```
+```postgresql
 -- Drops the bookings table if it already exists.
 DROP TABLE IF EXISTS public.bookings;
 
@@ -5092,35 +5025,34 @@ CREATE TABLE IF NOT EXISTS public.bookings (
 );
 ```
 
-As observed, we do not have the user first name, last name, and email, but only their id. Therefore, we needed to create a PostgreSQL function that combined all 'bookings' table elements with some of the 'auth.users'.
+As observed, we do not have the user first name, last name, and email, but only their id. Therefore, we needed to create a PostgreSQL function that combined all 'bookings' table elements with some of the 'auth.users' arguments.
 Hence, we first created the 'BookingWithUser' interface, which will help render the joined bookings and auth.users table,
 
-```
+```ts
 /**
-* This interface is used in adminBookingsPage to render the joined
-* Bookings and auth.users table as per rpc function 'get_all_bookings'
-*/
+ * This interface is used in adminBookingsPage to render the joined
+ * Bookings and auth.users table as per rpc function 'get_all_bookings'
+ */
 export interface BookingWithUser {
- id: string;
- room_id: string;
- user_id: string;
- user_email: string;
- first_name: string;
- last_name: string;
- check_in: string;
- check_out: string;
- guests: number;
- total_price: number;
- created_at: string;
- charged: boolean;
- nights: string;
+  id: string;
+  room_id: string;
+  user_id: string;
+  user_email: string;
+  first_name: string;
+  last_name: string;
+  check_in: string;
+  check_out: string;
+  guests: number;
+  total_price: number;
+  created_at: string;
+  charged: boolean;
+  nights: string;
 }
-
 ```
 
 then, the below PostgreSQL function will fetch all bookings and return a table with user first name, last name and email
 
-```
+```ts
 -- Drop old function if it exists
 drop function if exists public.get_all_bookings();
 
@@ -5169,23 +5101,20 @@ $$;
 When a booking is created, updated, or deleted, the React Query cache is invalidated using 'queryClient.invalidateQueries', which ensures that the latest data is fetched and displayed without requiring a page refresh.
 Ex.
 
-```
-    // This clears out the cache and alloes us to see the created booking without having to refresh the page
-      // https://tanstack.com/query/v4/docs/framework/react/guides/query-invalidation
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
-
+```ts
+// This clears out the cache and allows us to see the created booking without having to refresh the page
+// https://tanstack.com/query/v4/docs/framework/react/guides/query-invalidation
+queryClient.invalidateQueries({ queryKey: ["bookings"] });
 ```
 
 Administrators can create or edit bookings through the 'AdminBookingModal, which opens either in create mode or update mode depending on whether a booking is currently selected.
 
-```
-
+```ts
   // Opens the modal in 'create' mode
   const handleOpenCreateBooking = () => {
     setEditingBooking(null);
     setOpenBookingModal(true);
   };
-
   ...
 
    // Opens the modal in 'update' mode
@@ -5248,7 +5177,7 @@ Administrators can create or edit bookings through the 'AdminBookingModal, which
 
 To open the payment dialog, the 'profile' or user must have a 'stripe_customer_id' attached, hence, we use the 'getUserByEmail()' API function in **guestease-api.ts**
 
-```
+```ts
 /**
  * Fetch the user by email
  */
@@ -5262,12 +5191,11 @@ export const getUserByEmail = async (email: string) => {
   if (error) throw new Error(error.message);
   return data;
 };
-
 ```
 
 The 'handleCreateBooking' function is responsible for creating a new booking through the admin interface. It receives the booking data from the form and optionally a paymentMethodId if a Stripe payment method was selected.
 
-```
+```ts
  // Handles creating a new booking through the admin API
   const handleCreateBooking = async (
     booking: any,
@@ -5286,25 +5214,24 @@ The 'handleCreateBooking' function is responsible for creating a new booking thr
 
 A new booking object is constructed with the required fields such as room_id, user_email, check-in and check-out dates, number of guests, and the payment method ID. This object is then sent to the backend using the 'adminCreateBookingApi' function.
 
-```
+```ts
 // Sends booking object to the backend
-      await adminCreateBookingApi(newBooking);
+await adminCreateBookingApi(newBooking);
 ```
 
-If the request succeeds, React Query invalidates the "bookings" query cache using queryClient.invalidateQueries,
+If the request succeeds, React Query invalidates the 'bookings' query cache using queryClient.invalidateQueries,
 
-```
-   // This clears out the cache and alloes us to see the created booking without having to refresh the page
-      // https://tanstack.com/query/v4/docs/framework/react/guides/query-invalidation
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
-
+```ts
+// This clears out the cache and alloes us to see the created booking without having to refresh the page
+// https://tanstack.com/query/v4/docs/framework/react/guides/query-invalidation
+queryClient.invalidateQueries({ queryKey: ["bookings"] });
 ```
 
 which triggers a refetch so the newly created booking appears immediately in the table without refreshing the page.
 
 A snackbar message is also displayed to confirm the successful creation, and the booking modal is closed.
 
-```
+```ts
     // Message to confirm the booking has beeen created
       setSnackbarMessage("Booking created successfully!");
       setSnackbarOpen(true);
@@ -5319,7 +5246,7 @@ A snackbar message is also displayed to confirm the successful creation, and the
 
 Let's now have a close-up of the 'adminCreateBookingApi()' function in **admin-bookings-api.ts** where we receive the new booking object to be sent off to the backend route to finally create the booking.
 
-```
+```ts
 /**
  * Create Booking (Admin)
  * Sends a POST request to the admin backend to create a booking.
@@ -5345,13 +5272,12 @@ export const adminCreateBookingApi = async (bookingData: {
 
   return data;
 };
-
 ```
 
 The backend route in **adminCreateBookings.js** will complete the booking flow.
 In it, we first validate all required booking fields, and we, then, ensure that the checkout date set is at least 1 day after the checkin date.
 
-```
+```js
 // ADMIN Create Booking
 router.post("/admin/create-booking", async (req, res) => {
   const { room_id, user_email, check_in, check_out, guests } = req.body;
@@ -5373,23 +5299,22 @@ router.post("/admin/create-booking", async (req, res) => {
 
 At that point, we are ready to 'insert' the new booking into the 'bookings' table in Supabase.
 
-```
-  /**
-     * Insert the booking into the database.
-     * Supabase insert reference:
-     * https://supabase.com/docs/reference/javascript/insert
-     **/
-    const { data: insertedBookings, error } = await supabase
-      .from("bookings")
-      .insert([
-        { room_id, user_id: user.id, check_in, check_out, guests, total_price },
-      ])
-      .select();
+```js
+/**
+ * Insert the booking into the database.
+ * Supabase insert reference:
+ * https://supabase.com/docs/reference/javascript/insert
+ **/
+const { data: insertedBookings, error } = await supabase
+  .from("bookings")
+  .insert([
+    { room_id, user_id: user.id, check_in, check_out, guests, total_price },
+  ])
+  .select();
 
-    if (error) {
-      return res.status(400).json({ error: error.message });
-    }
-
+if (error) {
+  return res.status(400).json({ error: error.message });
+}
 ```
 
 Data from the 'profiles' table and the 'assets' storage is retrieved to populate the email notification template in the **emailTemplate.js** file.
@@ -5446,7 +5371,7 @@ const handleUpdateBooking = async (
 ) => {
 ```
 
-Next, the updated booking data is sent to the backend using the adminUpdateBookingApi' function in **admin-bookings-api.ts** file. Along with the booking details (room, dates, guests), the function also sends the optional 'payment_method_id'. If Stripe was used, this ID allows the backend to charge the customer.
+Next, the updated booking data is sent to the backend using the 'adminUpdateBookingApi' function in **admin-bookings-api.ts** file. Along with the booking details (room, dates, guests), the function also sends the optional 'payment_method_id'. If Stripe was used, this ID allows the backend to charge the customer.
 
 ```ts
 await adminUpdateBookingApi({
@@ -5690,7 +5615,7 @@ const checkOut = new Date(booking.check_out);
 const today = new Date();
 
 // If today bigger than check-out, it means the check-out is in
-// the past. No refund posible.
+// the past. No refund possible.
 if (today >= checkOut) {
   return res
     .status(400)
@@ -5844,7 +5769,7 @@ Bookings are displayed in a Material UI table showing guest details, booking dat
 
 Last but not least, the 'payment dialog' in this page is used when an admin create or update a booking to collect a guest’s card using Stripe while creating or updating a booking.
 
-The function retrieves the user profile using the email\*\* entered in the booking form. This is necessary because the Stripe customer ID is stored in the user profile.
+The function retrieves the user profile using the email entered in the booking form. This is necessary because the Stripe customer ID is stored in the user profile.
 
 ```ts
 const profile = await getUserByEmail(booking.user_email);
@@ -5949,16 +5874,6 @@ const AdminUsersPage: React.FC = () => {
     role: "",
     created_at: "",
   });
-
-  const [userForm, setUserForm] = useState({
-    first_name: "",
-    last_name: "",
-    country: "",
-    zip_code: "",
-    email: "",
-    role: "guest",
-  });
-
 ```
 
 The form used in the modal is also stored in state.
@@ -6147,7 +6062,7 @@ A temporary password is generated using a random string. This password is only t
 
 The user is then created in Supabase Authentication. This creates the authentication identity, and the user_metadata object stores additional user details associated with the account.
 
-We will later explain in a dedicated chapetr how the above information will get synchronized ith the 'profiles' table.
+We will later explain in a dedicated chapter how the above information will get synchronized into the 'profiles' table.
 
 After the account is created, the user object is extracted, and a Stripe customer is created for the user.
 
@@ -6200,9 +6115,9 @@ const { data: reset } = await supabase.auth.admin.generateLink({
 const tokenizedLink = reset.properties.action_link;
 ```
 
-This creates a secure tokenized link that allows the user to set their password. After clicking it, they are redirected to the frontend /update-password page.
+This creates a secure tokenized link that allows the user to set their password. After clicking it, they are redirected to the frontend '/update-password' page.
 
-The system then retrieves other data needed for the email taht will sent off to the new user
+The system then retrieves other data needed for the email that will sent off to the new user
 
 ```ts
 // Fetching the GuestEase logo from the Supabase storage
@@ -6283,7 +6198,7 @@ const handleOpenUpdateUser = (u: User) => {
 };
 ```
 
-The below function then will update the user by opening the modal and leveraging the API call 'adminUpdateUserApi()' in \*\*admin-users-api
+The below function then will update the user by opening the modal and leveraging the API call 'adminUpdateUserApi()' in **admin-users-api.ts**
 
 ```ts
 const handleUpdateUser = async () => {
@@ -6341,7 +6256,7 @@ export const adminUpdateUserApi = async (userForm: {
 };
 ```
 
-It receives the user object to be updated and POST a request to the backend **adminUpdateUsers.js**.
+It receives the user object to be updated and POST a request to the backend route **adminUpdateUsers.js**.
 
 We will now focus on this file.
 
@@ -6540,7 +6455,7 @@ router.post("/admin/delete-user", async (req, res) => {
     return checkout >= today;
   });
 
-  // If there upcoming bookings, we will show the below error message for a better UI experience
+  // If there are upcoming bookings, we will show the below error message for a better UI experience
   if (upcomingBookings.length > 0) {
     return res.status(400).json({
       error: "User cannot be deleted because they still have active bookings.",
@@ -6659,7 +6574,7 @@ export const getRooms = async () => {
 };
 ```
 
-The component stores UI state using `useState`.
+The component stores UI state using 'useState'.
 
 ```tsx
 const [openRoomModal, setOpenRoomModal] = useState(false);
@@ -6684,8 +6599,6 @@ const [existingImages, setExistingImages] = useState<string[]>([]);
 ```
 
 Keeps images already stored in the database.
-
----
 
 Snackbar state shows success messages.
 
@@ -6729,8 +6642,8 @@ const [roomForm, setRoomForm] = useState({
 });
 ```
 
-The room creation is handled by the below function Opening the **create modal** clears the form.
-where the form fields are empty as we open the modal (setEditingRoom mustbe null as we are creating and not updating).
+The room creation is handled by the below function opening the create modal,
+where the form fields are empty as we open it (setEditingRoom must be null as we are creating and not updating).
 
 ```tsx
 const handleOpenCreateRoom = () => {
@@ -6826,7 +6739,7 @@ export function useAdminCreateRoom() {
 }
 ```
 
-In it, we pass the RoomPayload, essentially created by the user when filleg the above-mentioned form. At that point, we use React Query's useMutation to insert the room into the Supabase 'rooms' table, and get the room list refreshed by invalidating the query.
+In it, we pass the RoomPayload, essentially created by the user when filling the above-mentioned form. At that point, we use React Query's useMutation to insert the room into the Supabase 'rooms' table, and get the room list refreshed by invalidating the query.
 
 The database then returns the room object created and we fetch its id.
 
@@ -6935,7 +6848,7 @@ The update function allows the admin to modify an existing room and update its i
 
 The 'handleOpenUpdateRoom' function prepares the update modal with the data of the selected room so the admin can edit it.
 
-First, the function receives a room object 'r and extracts its existing images. These are stored in state so the modal can display the current images and allow the admin to keep or remove them.
+First, the function receives a room object 'r' and extracts its existing images. These are stored in state so the modal can display the current images and allow the admin to keep or remove them.
 
 ```ts
 const imgs = r.images;
@@ -7425,8 +7338,8 @@ Example after the admin interacts with the UI:
 
 ```ts
 filters = {
-  search: "smith",
-  room: "Clan Suite",
+  search: "marisa",
+  room: "Seanchaí Nook",
   first_name: "",
   last_name: "",
   email: "",
@@ -7713,7 +7626,7 @@ Example:
 handleChange("first_name", "John");
 ```
 
-This updates the filter state to include `"John"` as the first name filter.
+This updates the filter state to include "John" as the first name filter.
 
 The component also provides a function to 'reset all filters'.
 
@@ -7793,6 +7706,120 @@ Finally, the 'Reset Filters' button clears all filters:
 
 Overall, this component only handles the filter UI and state updates. The actual filtering logic is handled separately by the **components/useFilteredBookings.tsx** hook, which uses these filter values to determine which bookings should be displayed.
 
+## Email Util
+
+This code creates an **Express API route** that sends emails using the **Resend.com** email service. It receives email data from a client request, validates the input, sends the email through the Resend API, and returns the result.
+
+The Express framework is first imported and a router instance is created. This router allows defining API endpoints that can later be mounted in the main Express server.
+
+```js
+import express from "express";
+
+const router = express.Router();
+```
+
+A 'POST endpoint' called '/send_email' is defined. When a request hits this route, the server extracts the 'email', 'subject', 'body', and optional 'from' values from the request body.
+
+```js
+router.post("/send_email", async (req, res) => {
+  // console.log("Hit /send_email route");
+  const { email, subject, body, from } = req.body;
+```
+
+The server, then, sends an HTTP request to the Resend API to deliver the email. The request includes headers specifying JSON content and a Bearer authentication token using the 'RESEND_API_KEY' stored in environment variables.
+
+```js
+
+  /**
+   * We are using 'Resend' as an email host. hence, we are sending an HTTP POST
+   * request to Resend.
+   * https://resend.com/docs/api-reference/emails/send-email
+   */
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+
+        /**
+         * We authenticate using a Bearer token (our RESEND_API_KEY), as required by:
+         * https://resend.com/docs/api-reference/authentication
+         */
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      },
+
+      /**
+       * Resend email payload format:
+       * https://resend.com/docs/api-reference/emails/send-email#body
+       */
+      body: JSON.stringify({
+        // to: [email, "setuproject.guesteasebb@gmail.com"],
+        to: email,
+        from: from || "onboarding@resend.dev",
+        subject,
+        html: body,
+      }),
+    });
+
+```
+
+The body of the request contains the email details formatted according to Resend’s API structure. The recipient email, sender address, subject, and HTML content are sent as JSON.
+
+After sending the request, the code reads the response as text first. This avoids errors if the response is not valid JSON. It then attempts to parse the text into JSON.
+
+```js
+/**
+ * Calling response.json() on a non‑JSON body would throw a SyntaxError,
+ * so we read the raw text first and *attempt* to parse it as JSON.
+ * If parsing fails, we safely fall back to the plain text response.
+ */
+const text = await response.text();
+let data;
+
+try {
+  data = JSON.parse(text);
+} catch {
+  data = text;
+}
+```
+
+The code checks `response.ok`, which is true when the HTTP response status is in the **200–299 range**. If successful, it logs the result and returns a success message to the client.
+
+```js
+/**
+ * response.ok is true for 2 status codes
+ * https://developer.mozilla.org/en-US/docs/Web/API/Response/ok
+ */
+if (response.ok) {
+  console.log("Resend success:", data);
+  return res.json({ status: "Email sent", data });
+} else {
+  console.error("Resend ERROR:", { status: response.status, data });
+  return res.status(response.status).json({ status: "error", data });
+}
+```
+
+If the API request fails, the server logs the error and returns the same status code from Resend to the client.
+
+A final `catch` block handles unexpected server errors and returns a **500 Internal Server Error** response.
+
+```js
+} catch (err) {
+    /**
+     * Express error handling best practices:
+     * https://expressjs.com/en/guide/error-handling.html
+     */
+    return res.status(500).json({
+      status: "error",
+      error: err.message,
+    });
+  }
+});
+
+export default router;
+
+```
+
 # Supabase tables and functions
 
 ## Rooms table
@@ -7819,7 +7846,7 @@ CREATE TABLE IF NOT EXISTS public.rooms (
 ```
 
 'amenities jsonb'
-Stores room features (like balcony, tea tray, etc.) as a JSON array using PostgreSQL’s binary JSON format.
+stores room features (like balcony, tea tray, etc.) as a JSON array using PostgreSQL’s binary JSON format.
 
 Example structure:
 
@@ -7827,8 +7854,8 @@ Example structure:
 ["Tea & Coffee Tray", "Balcony", "King bed"]
 ```
 
-`images jsonb`
-Stores image filenames as a JSON array so multiple images can be attached to one room.
+'images jsonb'
+stores image filenames as a JSON array so multiple images can be attached to one room.
 
 Example:
 
@@ -7870,7 +7897,7 @@ VALUES
 
 ```
 
-Each row inserted represents one boutique guesthouse room with its metadata stored in structured columns and flexible JSON arrays for amenities and images.
+Each row inserted represents one room with its metadata stored in structured columns and flexible JSON arrays for amenities and images.
 
 ### Source attributions
 
@@ -7909,7 +7936,7 @@ CREATE TABLE IF NOT EXISTS public.bookings (
 
 ```
 
-'period daterange GENERATED ALWAYS AS (...) STORED' is the most intersting column as it creates a 'computed column' that converts the 'check_in' and 'check_out' dates into a PostgreSQL 'daterange'. The `[)` syntax means the start date is included and the end date is excluded. This column is automatically generated and stored so it can be used efficiently for overlap checks when validating bookings.
+'period daterange GENERATED ALWAYS AS (...) STORED' is the most interesting column as it creates a 'computed column' that converts the 'check_in' and 'check_out' dates into a PostgreSQL 'daterange'. The `[)` syntax means the start date is included and the end date is excluded. This column is automatically generated and stored so it can be used efficiently for overlap checks when validating bookings.
 
 Without the above column, we would not be able to safely ensure that no overlaps occur in our booking system.
 

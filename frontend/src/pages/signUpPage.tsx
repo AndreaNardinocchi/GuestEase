@@ -143,7 +143,7 @@ const SignUpPage: React.FC = () => {
         },
       });
 
-      console.log("Supabase signUp returned:", { data, error });
+      // console.log("Supabase signUp returned:", { data, error });
 
       if (error) {
         console.error("Error signing up:", error);
@@ -162,7 +162,7 @@ const SignUpPage: React.FC = () => {
 
         /**
          * This will create a Stripe Customer id for the new user and will
-         * allow him to book
+         * allow them to book
          */
         createStripeCustomerApi({
           userId: data.user.id,

@@ -13,14 +13,14 @@ import {
 import { CardElement, useElements, useStripe } from "@stripe/react-stripe-js";
 
 interface StripeCheckoutProps {
-  // The client secret returned from your backend when creating a SetupIntent.
+  // The client secret returned from the backend when creating a SetupIntent.
   clientSecret: string | null;
   // Receives the ID of the confirmed payment method.
   onSuccess?: (paymentMethodId: string) => void;
 }
 
 /**
- * This component will hosts the Stripe payment form.
+ * This component will host the Stripe payment form.
  * https://stripe.com/docs/payments/accept-a-payment?platform=web&ui=elements
  * https://mui.com/material-ui/react-card/
  */
@@ -74,7 +74,7 @@ const StripeCheckOut: React.FC<StripeCheckoutProps> = ({
       return;
     }
 
-    console.log("clientSecret:", clientSecret);
+    // console.log("clientSecret:", clientSecret);
 
     /**
      * Confirms the SetupIntent using the card details and billing info.

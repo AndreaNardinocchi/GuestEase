@@ -41,7 +41,7 @@ const SiteHeader: React.FC = () => {
 
   useEffect(
     () => {
-      // You can remove this or set it from somewhere else if needed
+      // We can remove this or set it from somewhere else if needed
       setUserName(user?.first_name ?? "User");
     }, // Run this effect every time `token` changes ensuring the 'userFirstName' is up-to-date
     [token, user],

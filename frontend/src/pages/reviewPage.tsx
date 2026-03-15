@@ -52,6 +52,14 @@ const ReviewPage: React.FC = () => {
   const { data: profile } = useUserProfile(booking?.user_id);
 
   /**
+   * This is the browser title
+   * https://stackoverflow.com/questions/46160461/how-do-you-set-the-document-title-in-react?
+   */
+  useEffect(() => {
+    document.title = `${room?.name}'s review | GuestEase`;
+  });
+
+  /**
    * Local UI state for the review form.
    * Rating defaults to 0, comment to an empty string.
    */
@@ -125,14 +133,6 @@ const ReviewPage: React.FC = () => {
       },
     );
   };
-
-  /**
-   * This is the browser title
-   * https://stackoverflow.com/questions/46160461/how-do-you-set-the-document-title-in-react?
-   */
-  useEffect(() => {
-    document.title = `${room?.name}'s review | GuestEase`;
-  });
 
   if (isLoading) {
     return (

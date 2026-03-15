@@ -187,8 +187,8 @@ export const getRoomById = async (roomId: string) => {
 
 /**
  * React Query Fetchers
- * We fetach all bookings through the rpc 'get_all_bookings' which is a function
- * that joind the bookings table with the auth.users so that the admin will be
+ * We fetch all bookings through the rpc 'get_all_bookings' which is a function
+ * that joined the bookings table with the auth.users so that the admin will be
  * able to see all the users' bookings.
  * */
 export const getAllBookings = async (): Promise<BookingWithUser[]> => {
