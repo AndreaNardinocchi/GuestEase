@@ -15,7 +15,7 @@ Together, these technologies create a fast, secure, and user‑friendly booking 
 - **Database & Auth:** Supabase PostgreSQL, Supabase Auth, RLS
 - **Services:** Stripe (payments), Resend (emails), Cron‑job.org (scheduled tasks)
 - **Storage:** Supabase Storage
-- **Deployment:** Vercel (frontend), Render (backend)
+- **Deployment:** Vercel (frontend on https://guest-ease-efpg.vercel.app/), Render (backend on https://guestease.onrender.com)
 
 ## Features
 

@@ -37,7 +37,7 @@ export const searchAvailableRooms = async (
     // If Supabase returned an error, throw it so it is caught by the catch block
     if (error) throw error;
 
-    console.log("[searchAvailableRooms] RPC returned:", data);
+    // console.log("[searchAvailableRooms] RPC returned:", data);
 
     /**
      * On success: true and rooms: data returned from the RPC (array of rooms or similar)
@@ -48,7 +48,7 @@ export const searchAvailableRooms = async (
      * console.error is standard here:
      * https://developer.mozilla.org/en-US/docs/Web/API/console/error
      */
-    console.error("Error fetching rooms:", err);
+    // console.error("Error fetching rooms:", err);
 
     /**
      * Normalize the error result:

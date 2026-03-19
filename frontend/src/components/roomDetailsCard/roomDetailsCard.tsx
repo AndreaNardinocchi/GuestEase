@@ -174,7 +174,16 @@ const RoomDetailsCard: React.FC<RoomDetailsCardProps> = ({
               label="Check In"
               type="date"
               value={checkIn}
-              onChange={(e) => setCheckIn(e.target.value)}
+              // onChange={(e) => setCheckIn(e.target.value)}
+              onChange={(e) => {
+                const newCheckIn = e.target.value;
+                // Prevent reversed dates
+                if (checkOut && newCheckIn >= checkOut) {
+                  // Ignore invalid selection
+                  return;
+                }
+                setCheckIn(newCheckIn);
+              }}
               fullWidth
               /**
                * slotProps property.
@@ -193,7 +202,16 @@ const RoomDetailsCard: React.FC<RoomDetailsCardProps> = ({
               label="Check Out"
               type="date"
               value={checkOut}
-              onChange={(e) => setCheckOut(e.target.value)}
+              // onChange={(e) => setCheckOut(e.target.value)}
+              onChange={(e) => {
+                const newCheckOut = e.target.value;
+                // Prevent reversed dates
+                if (checkIn && newCheckOut <= checkIn) {
+                  // Ignore invalid selection
+                  return;
+                }
+                setCheckOut(newCheckOut);
+              }}
               fullWidth
               slotProps={{
                 input: {
