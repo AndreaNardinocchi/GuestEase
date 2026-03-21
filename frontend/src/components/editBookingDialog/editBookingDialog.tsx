@@ -8,6 +8,7 @@ import {
   Button,
   Slide,
   Typography,
+  Snackbar,
 } from "@mui/material";
 import { useAvailableRooms } from "../../hooks/useAvailableRooms";
 import { TransitionProps } from "@mui/material/transitions";
@@ -52,6 +53,10 @@ const EditBookingDialog: React.FC<EditBookingDialogProps> = ({
    * the parent state until the user clicks "Save".
    */
   const [localBooking, setLocalBooking] = useState({ ...booking });
+
+  // These states are needed to show an error message for empty fields
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
 
   /**
    * Reset local state whenever a new booking is passed in.
@@ -124,152 +129,170 @@ const EditBookingDialog: React.FC<EditBookingDialogProps> = ({
   const overlapError = !roomIsAvailable;
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
-      maxWidth="sm"
-      slots={{ transition: Transition }}
-    >
-      <DialogTitle>Edit Booking</DialogTitle>
-
-      <DialogContent>
-        <TextField
-          margin="dense"
-          label="Check-in"
-          type="date"
-          fullWidth
-          value={localBooking.check_in}
-          // When the user selects a new check‑in date, recalculate
-          // the number of nights and total price...
-          onChange={(e) => {
-            const newCheckIn = e.target.value;
-            const { nights, total_price } = computePrice(
-              newCheckIn,
-              localBooking.check_out,
-              room.price,
-            );
-            // ...then update the local booking state accordingly.
-            setLocalBooking((prev: any) => ({
-              ...prev,
-              check_in: newCheckIn,
-              nights,
-              total_price,
-            }));
-          }}
-          slotProps={{
-            inputLabel: { shrink: true },
-            htmlInput: { min: today },
-          }}
-          error={overlapError || dateError}
-          helperText={
-            overlapError
-              ? "This room is already booked for these dates"
-              : dateError
-                ? "Check-in must be before check-out"
-                : ""
-          }
-        />
-
-        <TextField
-          margin="dense"
-          label="Check-out"
-          type="date"
-          fullWidth
-          value={localBooking.check_out}
-          onChange={(e) => {
-            // When the user selects a new check‑out date, recalculate
-            // the number of nights and total price...
-            const newCheckOut = e.target.value;
-            const { nights, total_price } = computePrice(
-              localBooking.check_in,
-              newCheckOut,
-              room.price,
-            );
-            // ...then update the local booking state accordingly.
-            setLocalBooking((prev: any) => ({
-              ...prev,
-              check_out: newCheckOut,
-              nights,
-              total_price,
-            }));
-          }}
-          slotProps={{
-            inputLabel: { shrink: true },
-            htmlInput: { min: nextDayAfterCheckIn },
-          }}
-          error={overlapError || dateError}
-          helperText={
-            overlapError
-              ? "This room is already booked for these dates"
-              : dateError
-                ? "Check-in must be before check-out"
-                : ""
-          }
-        />
-
-        <TextField
-          margin="dense"
-          label="Guests"
-          type="number"
-          fullWidth
-          value={localBooking.guests}
-          onChange={(e) => {
-            /**
-             * 'value' will return the smallest between what the user types
-             * and the room capacity. This prevents exceeding the room capacity.
-             */
-            const value = Math.min(Number(e.target.value), room.capacity);
-            setLocalBooking((prev: any) => ({ ...prev, guests: value }));
-          }}
-          slotProps={{
-            htmlInput: { min: 1, max: room.capacity },
-          }}
-        />
-      </DialogContent>
-
-      <DialogActions>
-        <Button onClick={onClose} sx={{ color: "#472d30" }}>
-          Cancel
-        </Button>
-
-        <Button
-          onClick={() =>
-            /**
-             * Pass the fully recalculated booking data (...local booking) to the parent.
-             * We explicitly include 'nights' and 'total_price' because the Stripe
-             * payment flow depends on these values being accurate and up‑to‑date.
-             * */
-            onSave({
-              ...localBooking,
-              // Required for Stripe logic
-              nights: localBooking.nights,
-              total_price: localBooking.total_price,
-            })
-          }
-          variant="contained"
-          /**
-           * By disabling the button in case of any errors, we prevent overlapping
-           * and invalid date selections.
-           */
-          disabled={overlapError || dateError}
-          sx={{
-            backgroundColor: "#472d30",
-            "&:hover": { bgcolor: "#e26d5c" },
-          }}
-        >
-          Save
-        </Button>
-      </DialogActions>
-
-      <Typography
-        sx={{ p: 1, px: 3, pb: 2, fontSize: "0.85rem" }}
-        color="text.secondary"
+    <>
+      <Dialog
+        open={open}
+        onClose={onClose}
+        fullWidth
+        maxWidth="sm"
+        slots={{ transition: Transition }}
       >
-        *Your payment process will be updated as well to reflect the latest
-        changes.
-      </Typography>
-    </Dialog>
+        <DialogTitle>Edit Booking</DialogTitle>
+
+        <DialogContent>
+          <TextField
+            margin="dense"
+            label="Check-in"
+            type="date"
+            fullWidth
+            value={localBooking.check_in}
+            // When the user selects a new check‑in date, recalculate
+            // the number of nights and total price...
+            onChange={(e) => {
+              const newCheckIn = e.target.value;
+              const { nights, total_price } = computePrice(
+                newCheckIn,
+                localBooking.check_out,
+                room.price,
+              );
+              // ...then update the local booking state accordingly.
+              setLocalBooking((prev: any) => ({
+                ...prev,
+                check_in: newCheckIn,
+                nights,
+                total_price,
+              }));
+            }}
+            slotProps={{
+              inputLabel: { shrink: true },
+              htmlInput: { min: today },
+            }}
+            error={overlapError || dateError}
+            helperText={
+              overlapError
+                ? "This room is already booked for these dates"
+                : dateError
+                  ? "Check-in must be before check-out"
+                  : ""
+            }
+          />
+
+          <TextField
+            margin="dense"
+            label="Check-out"
+            type="date"
+            fullWidth
+            value={localBooking.check_out}
+            onChange={(e) => {
+              // When the user selects a new check‑out date, recalculate
+              // the number of nights and total price...
+              const newCheckOut = e.target.value;
+              const { nights, total_price } = computePrice(
+                localBooking.check_in,
+                newCheckOut,
+                room.price,
+              );
+              // ...then update the local booking state accordingly.
+              setLocalBooking((prev: any) => ({
+                ...prev,
+                check_out: newCheckOut,
+                nights,
+                total_price,
+              }));
+            }}
+            slotProps={{
+              inputLabel: { shrink: true },
+              htmlInput: { min: nextDayAfterCheckIn },
+            }}
+            error={overlapError || dateError}
+            helperText={
+              overlapError
+                ? "This room is already booked for these dates"
+                : dateError
+                  ? "Check-in must be before check-out"
+                  : ""
+            }
+          />
+
+          <TextField
+            margin="dense"
+            label="Guests"
+            type="number"
+            fullWidth
+            value={localBooking.guests}
+            onChange={(e) => {
+              /**
+               * 'value' will return the smallest between what the user types
+               * and the room capacity. This prevents exceeding the room capacity.
+               */
+              const value = Math.min(Number(e.target.value), room.capacity);
+              setLocalBooking((prev: any) => ({ ...prev, guests: value }));
+            }}
+            slotProps={{
+              htmlInput: { min: 1, max: room.capacity },
+            }}
+          />
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={onClose} sx={{ color: "#472d30" }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              // Checking if the fields are filled in
+              if (
+                !localBooking.check_in ||
+                !localBooking.check_out ||
+                !localBooking.guests
+              ) {
+                setSnackbarMessage("Please fill in all required fields.");
+                setSnackbarOpen(true);
+                return;
+              }
+              /**
+               * Pass the fully recalculated booking data (...local booking) to the parent.
+               * We explicitly include 'nights' and 'total_price' because the Stripe
+               * payment flow depends on these values being accurate and up‑to‑date.
+               * */
+              onSave({
+                ...localBooking,
+                // Required for Stripe logic
+                nights: localBooking.nights,
+                total_price: localBooking.total_price,
+              });
+            }}
+            variant="contained"
+            /**
+             * By disabling the button in case of any errors, we prevent overlapping
+             * and invalid date selections.
+             */
+            disabled={overlapError || dateError}
+            sx={{
+              backgroundColor: "#472d30",
+              "&:hover": { bgcolor: "#e26d5c" },
+            }}
+          >
+            Save
+          </Button>
+        </DialogActions>
+
+        <Typography
+          sx={{ p: 1, px: 3, pb: 2, fontSize: "0.85rem" }}
+          color="text.secondary"
+        >
+          *Your payment process will be updated as well to reflect the latest
+          changes.
+        </Typography>
+      </Dialog>
+      {/* Snackbar for error message */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarOpen(false)}
+        message={snackbarMessage}
+      ></Snackbar>
+    </>
   );
 };
 

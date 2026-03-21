@@ -11,7 +11,6 @@ import {
   TextField,
   Slide,
   Snackbar,
-  Alert,
 } from "@mui/material";
 import { BookingModalProps } from "../../types/interfaces";
 import { getRoomName } from "../../utils/getRoomName";
@@ -58,7 +57,7 @@ const AdminBookingModal: React.FC<BookingModalProps> = ({
     },
   );
 
-  // This state is needed to show an error message for empty fields
+  // These states are needed to show an error message for empty fields
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
 
@@ -387,17 +386,8 @@ const AdminBookingModal: React.FC<BookingModalProps> = ({
         open={snackbarOpen}
         autoHideDuration={3000}
         onClose={() => setSnackbarOpen(false)}
-        // anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
         message={snackbarMessage}
-      >
-        {/* <Alert
-          onClose={() => setSnackbarOpen(false)}
-          severity="warning"
-          sx={{ width: "100%" }}
-        >
-        {snackbarMessage}
-        </Alert> */}
-      </Snackbar>
+      ></Snackbar>
     </>
   );
 };

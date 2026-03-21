@@ -7,10 +7,11 @@ import {
   Button,
   Slide,
   MenuItem,
+  Snackbar,
 } from "@mui/material";
 import { countries, EditProfileDialogProps } from "../../types/interfaces";
 import { TransitionProps } from "@mui/material/transitions";
-import React from "react";
+import React, { useState } from "react";
 
 /**
  * This is a nice transition effect we were eager to try out,
@@ -39,79 +40,111 @@ const EditProfileDialog: React.FC<EditProfileDialogProps> = ({
   onClose,
   onSave,
 }) => {
+  // These states are needed to show an error message for empty fields
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
-      maxWidth="sm"
-      slots={{ transition: Transition }}
-    >
-      <DialogTitle>Edit Profile</DialogTitle>
+    <>
+      <Dialog
+        open={open}
+        onClose={onClose}
+        fullWidth
+        maxWidth="sm"
+        slots={{ transition: Transition }}
+      >
+        <DialogTitle>Edit Profile</DialogTitle>
 
-      <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        <TextField
-          fullWidth
-          // https://mui.com/material-ui/customization/density/
-          margin="dense"
-          label="First Name"
-          value={formData.first_name}
-          onChange={(e) =>
-            setFormData({ ...formData, first_name: e.target.value })
-          }
-        />
-
-        <TextField
-          label="Last Name"
-          value={formData.last_name}
-          onChange={(e) =>
-            setFormData({ ...formData, last_name: e.target.value })
-          }
-        />
-
-        <TextField
-          select
-          fullWidth
-          required
-          label="Country"
-          value={formData.country}
-          onChange={(e) =>
-            setFormData({ ...formData, country: e.target.value })
-          }
+        <DialogContent
+          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
         >
-          {countries.map((c) => (
-            <MenuItem key={c.code} value={c.name}>
-              {c.name}
-            </MenuItem>
-          ))}
-        </TextField>
+          <TextField
+            fullWidth
+            // https://mui.com/material-ui/customization/density/
+            margin="dense"
+            label="First Name"
+            value={formData.first_name}
+            onChange={(e) =>
+              setFormData({ ...formData, first_name: e.target.value })
+            }
+          />
 
-        <TextField
-          label="Zip Code"
-          value={formData.zip_code}
-          onChange={(e) =>
-            setFormData({ ...formData, zip_code: e.target.value })
-          }
-        />
-      </DialogContent>
+          <TextField
+            label="Last Name"
+            value={formData.last_name}
+            onChange={(e) =>
+              setFormData({ ...formData, last_name: e.target.value })
+            }
+          />
 
-      <DialogActions>
-        <Button
-          sx={{ color: "#472d30", "&:hover": { color: "#e26d5c" } }}
-          onClick={onClose}
-        >
-          Cancel
-        </Button>
+          <TextField
+            select
+            fullWidth
+            required
+            label="Country"
+            value={formData.country}
+            onChange={(e) =>
+              setFormData({ ...formData, country: e.target.value })
+            }
+          >
+            {countries.map((c) => (
+              <MenuItem key={c.code} value={c.name}>
+                {c.name}
+              </MenuItem>
+            ))}
+          </TextField>
 
-        <Button
-          variant="contained"
-          sx={{ backgroundColor: "#472d30", "&:hover": { bgcolor: "#e26d5c" } }}
-          onClick={onSave}
-        >
-          Save Changes
-        </Button>
-      </DialogActions>
-    </Dialog>
+          <TextField
+            label="Zip Code"
+            value={formData.zip_code}
+            onChange={(e) =>
+              setFormData({ ...formData, zip_code: e.target.value })
+            }
+          />
+        </DialogContent>
+
+        <DialogActions>
+          <Button
+            sx={{ color: "#472d30", "&:hover": { color: "#e26d5c" } }}
+            onClick={onClose}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            variant="contained"
+            sx={{
+              backgroundColor: "#472d30",
+              "&:hover": { bgcolor: "#e26d5c" },
+            }}
+            onClick={() => {
+              // Checking if the fields are filled in
+              if (
+                !formData.first_name ||
+                !formData.last_name ||
+                !formData.country ||
+                !formData.zip_code
+              ) {
+                setSnackbarMessage("Please fill in all required fields.");
+                setSnackbarOpen(true);
+                return;
+              }
+
+              onSave();
+            }}
+          >
+            Save Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* Snackbar for error message */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarOpen(false)}
+        message={snackbarMessage}
+      ></Snackbar>
+    </>
   );
 };
 
