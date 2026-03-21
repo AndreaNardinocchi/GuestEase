@@ -10,6 +10,8 @@ import {
   MenuItem,
   TextField,
   Slide,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import { BookingModalProps } from "../../types/interfaces";
 import { getRoomName } from "../../utils/getRoomName";
@@ -55,6 +57,10 @@ const AdminBookingModal: React.FC<BookingModalProps> = ({
       total_price: 0,
     },
   );
+
+  // This state is needed to show an error message for empty fields
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
 
   /**
    * Reset local state whenever a new booking is passed in.
@@ -154,6 +160,24 @@ const AdminBookingModal: React.FC<BookingModalProps> = ({
    * This will handle our Create or Update button.
    */
   const handleSaveClick = () => {
+    // Basic required field validation
+    if (
+      !localBooking.room_id ||
+      !localBooking.user_email ||
+      !localBooking.check_in ||
+      !localBooking.check_out ||
+      !localBooking.guests ||
+      overlapError ||
+      dateError
+    ) {
+      // Error
+      console.warn("Missing required fields");
+      setSnackbarMessage("Please fill in all required fields.");
+      setSnackbarOpen(true);
+      // Stop
+      return;
+    }
+
     // These variables are needed to check whether the payment dialog needs to pop up
     const oldPrice = editingBooking?.total_price ?? 0;
     const newPrice = localBooking?.total_price ?? 0;
@@ -176,187 +200,205 @@ const AdminBookingModal: React.FC<BookingModalProps> = ({
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
-      maxWidth="sm"
-      slotProps={{ paper: { sx: { mx: 2 } } }}
-      slots={{ transition: Transition }}
-    >
-      <DialogTitle>
-        {editingBooking ? "Update Booking" : "Create Booking"}
-      </DialogTitle>
+    <>
+      <Dialog
+        open={open}
+        onClose={onClose}
+        fullWidth
+        maxWidth="sm"
+        slotProps={{ paper: { sx: { mx: 2 } } }}
+        slots={{ transition: Transition }}
+      >
+        <DialogTitle>
+          {editingBooking ? "Update Booking" : "Create Booking"}
+        </DialogTitle>
 
-      <DialogContent>
-        <InputLabel id="rooms">Rooms</InputLabel>
-        <Select
-          labelId="Room ID"
-          value={localBooking?.room_id || ""}
-          fullWidth
-          displayEmpty
-          renderValue={(value) =>
-            value ? value : <span style={{ color: "#aaa" }}>Rooms</span>
-          }
-          onChange={(e) =>
-            setLocalBooking((prev: any) => ({
-              ...prev,
-              room_id: e.target.value,
-            }))
-          }
-        >
-          {rooms.map((r: any) => (
-            <MenuItem key={r.id} value={r.id}>
-              {getRoomName(r.id, rooms)}
-            </MenuItem>
-          ))}
-        </Select>
-
-        {!editingBooking && (
-          <TextField
-            margin="dense"
-            label="User Email"
+        <DialogContent>
+          <InputLabel id="rooms">Rooms</InputLabel>
+          <Select
+            labelId="Room ID"
+            value={localBooking?.room_id || ""}
             fullWidth
-            value={localBooking?.user_email || ""}
+            displayEmpty
+            renderValue={(value) =>
+              value ? value : <span style={{ color: "#aaa" }}>Rooms</span>
+            }
             onChange={(e) =>
               setLocalBooking((prev: any) => ({
                 ...prev,
-                user_email: e.target.value,
+                room_id: e.target.value,
               }))
             }
+          >
+            {rooms.map((r: any) => (
+              <MenuItem key={r.id} value={r.id}>
+                {getRoomName(r.id, rooms)}
+              </MenuItem>
+            ))}
+          </Select>
+
+          {!editingBooking && (
+            <TextField
+              margin="dense"
+              label="User Email"
+              fullWidth
+              value={localBooking?.user_email || ""}
+              onChange={(e) =>
+                setLocalBooking((prev: any) => ({
+                  ...prev,
+                  user_email: e.target.value,
+                }))
+              }
+            />
+          )}
+
+          <TextField
+            margin="dense"
+            type="date"
+            label="Check-in"
+            fullWidth
+            /** slotProps property.
+             * https://mui.com/material-ui/api/menu/#props
+             * https://mui.com/material-ui/api/menu/#slots
+             * */
+            slotProps={{
+              input: {
+                inputProps: { min: today },
+              },
+              inputLabel: { shrink: true },
+            }}
+            value={localBooking?.check_in || ""}
+            onChange={(e) => {
+              // When the user selects a new check‑in date, recalculate
+              // the number of nights and total price...
+              const newCheckIn = e.target.value;
+              const { nights, total_price } = computePrice(
+                newCheckIn,
+                localBooking?.check_out || "",
+                selectedRoom?.price ?? 0,
+              );
+              // ...then update the local booking state accordingly.
+              setLocalBooking((prev: any) => ({
+                ...prev,
+                check_in: newCheckIn,
+                nights,
+                total_price,
+              }));
+            }}
+            error={overlapError || dateError}
+            helperText={
+              overlapError
+                ? "This room is already booked for these dates"
+                : dateError
+                  ? "Check-in must be before check-out"
+                  : ""
+            }
           />
-        )}
 
-        <TextField
-          margin="dense"
-          type="date"
-          label="Check-in"
-          fullWidth
-          /** slotProps property.
-           * https://mui.com/material-ui/api/menu/#props
-           * https://mui.com/material-ui/api/menu/#slots
-           * */
-          slotProps={{
-            input: {
-              inputProps: { min: today },
-            },
-            inputLabel: { shrink: true },
-          }}
-          value={localBooking?.check_in || ""}
-          onChange={(e) => {
-            // When the user selects a new check‑in date, recalculate
-            // the number of nights and total price...
-            const newCheckIn = e.target.value;
-            const { nights, total_price } = computePrice(
-              newCheckIn,
-              localBooking?.check_out || "",
-              selectedRoom?.price ?? 0,
-            );
-            // ...then update the local booking state accordingly.
-            setLocalBooking((prev: any) => ({
-              ...prev,
-              check_in: newCheckIn,
-              nights,
-              total_price,
-            }));
-          }}
-          error={overlapError || dateError}
-          helperText={
-            overlapError
-              ? "This room is already booked for these dates"
-              : dateError
-                ? "Check-in must be before check-out"
-                : ""
-          }
-        />
+          <TextField
+            margin="dense"
+            type="date"
+            label="Check-out"
+            fullWidth
+            slotProps={{
+              input: {
+                inputProps: { min: nextDayAfterCheckIn || today },
+              },
+              inputLabel: { shrink: true },
+            }}
+            value={localBooking?.check_out || ""}
+            onChange={(e) => {
+              // When the user selects a new check‑out date, recalculate
+              // the number of nights and total price...
+              const newCheckOut = e.target.value;
+              const { nights, total_price } = computePrice(
+                localBooking?.check_in || "",
+                newCheckOut,
+                selectedRoom?.price ?? 0,
+              );
+              // ...then update the local booking state accordingly.
+              setLocalBooking((prev: any) => ({
+                ...prev,
+                check_out: newCheckOut,
+                nights,
+                total_price,
+              }));
+            }}
+            error={overlapError || dateError}
+            helperText={
+              overlapError
+                ? "This room is already booked for these dates"
+                : dateError
+                  ? "Check-in must be before check-out"
+                  : ""
+            }
+          />
 
-        <TextField
-          margin="dense"
-          type="date"
-          label="Check-out"
-          fullWidth
-          slotProps={{
-            input: {
-              inputProps: { min: nextDayAfterCheckIn || today },
-            },
-            inputLabel: { shrink: true },
-          }}
-          value={localBooking?.check_out || ""}
-          onChange={(e) => {
-            // When the user selects a new check‑out date, recalculate
-            // the number of nights and total price...
-            const newCheckOut = e.target.value;
-            const { nights, total_price } = computePrice(
-              localBooking?.check_in || "",
-              newCheckOut,
-              selectedRoom?.price ?? 0,
-            );
-            // ...then update the local booking state accordingly.
-            setLocalBooking((prev: any) => ({
-              ...prev,
-              check_out: newCheckOut,
-              nights,
-              total_price,
-            }));
-          }}
-          error={overlapError || dateError}
-          helperText={
-            overlapError
-              ? "This room is already booked for these dates"
-              : dateError
-                ? "Check-in must be before check-out"
-                : ""
-          }
-        />
+          <TextField
+            margin="dense"
+            type="number"
+            label="Guests"
+            fullWidth
+            value={String(localBooking?.guests ?? "")}
+            onChange={(e) => {
+              /**
+               * 'value' will return the smallest between what the user types
+               * and the room capacity. This prevents exceeding the room capacity.
+               */
+              const value = Math.min(Number(e.target.value), maxGuests);
+              setLocalBooking((prev: any) => ({ ...prev, guests: value }));
+            }}
+          />
+        </DialogContent>
 
-        <TextField
-          margin="dense"
-          type="number"
-          label="Guests"
-          fullWidth
-          value={String(localBooking?.guests ?? "")}
-          onChange={(e) => {
+        <DialogActions>
+          <Button
+            onClick={onClose}
+            sx={{
+              color: "#472d30",
+              "&:hover": { color: "#E26D5C" },
+            }}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            variant="contained"
+            onClick={handleSaveClick}
             /**
-             * 'value' will return the smallest between what the user types
-             * and the room capacity. This prevents exceeding the room capacity.
+             * By disabling the button in case of any errors, we prevent overlapping
+             * and invalid date selections.
              */
-            const value = Math.min(Number(e.target.value), maxGuests);
-            setLocalBooking((prev: any) => ({ ...prev, guests: value }));
-          }}
-        />
-      </DialogContent>
-
-      <DialogActions>
-        <Button
-          onClick={onClose}
-          sx={{
-            color: "#472d30",
-            "&:hover": { color: "#E26D5C" },
-          }}
+            disabled={overlapError || dateError}
+            sx={{
+              backgroundColor: "#472d30",
+              color: "#fff",
+              "&:hover": { backgroundColor: "#E26D5C" },
+              px: 5,
+            }}
+          >
+            {/* This very same modal will be used for updates too */}
+            {editingBooking ? "Update Booking" : "Create Booking"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* Snackbar for error message */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarOpen(false)}
+        // anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        message={snackbarMessage}
+      >
+        {/* <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity="warning"
+          sx={{ width: "100%" }}
         >
-          Cancel
-        </Button>
-
-        <Button
-          variant="contained"
-          onClick={handleSaveClick}
-          /**
-           * By disabling the button in case of any errors, we prevent overlapping
-           * and invalid date selections.
-           */
-          disabled={overlapError || dateError}
-          sx={{
-            backgroundColor: "#472d30",
-            color: "#fff",
-            "&:hover": { backgroundColor: "#E26D5C" },
-            px: 5,
-          }}
-        >
-          {/* This very same modal will be used for updates too */}
-          {editingBooking ? "Update Booking" : "Create Booking"}
-        </Button>
-      </DialogActions>
-    </Dialog>
+        {snackbarMessage}
+        </Alert> */}
+      </Snackbar>
+    </>
   );
 };
 
