@@ -48,6 +48,9 @@ const AdminRoomModal: React.FC<AdminRoomModalProps> = ({
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
 
+  // This state will check whether any image has been selected or not
+  const [selectedFilesState, setSelectedFilesState] = useState<File[]>([]);
+
   return (
     <>
       <Dialog
@@ -182,7 +185,11 @@ const AdminRoomModal: React.FC<AdminRoomModalProps> = ({
             // This enables us to upload an array of images
             // https://www.codefrontend.com/file-upload-reactjs/
             // https://www.compilenrun.com/docs/framework/react/react-forms/react-file-uploads/
-            onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
+            onChange={(e) => {
+              const files = Array.from(e.target.files || []);
+              setSelectedFilesState(files);
+              setSelectedFiles(files);
+            }}
             style={{ marginTop: "1rem" }}
           />
         </DialogContent>
@@ -207,7 +214,9 @@ const AdminRoomModal: React.FC<AdminRoomModalProps> = ({
                 !roomForm.description ||
                 !roomForm.amenities ||
                 !roomForm.capacity ||
-                !roomForm.price
+                !roomForm.price ||
+                // If no image exist or it is selected check
+                (selectedFilesState.length === 0 && existingImages.length === 0)
               ) {
                 setSnackbarMessage("Please fill in all required fields.");
                 setSnackbarOpen(true);
