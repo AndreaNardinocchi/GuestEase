@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -11,6 +11,7 @@ import {
   TextField,
   Slide,
   FormControl,
+  Snackbar,
 } from "@mui/material";
 import { roles, UserModalProps } from "../../types/interfaces";
 import { TransitionProps } from "@mui/material/transitions";
@@ -38,14 +39,9 @@ const AdminUserModal: React.FC<UserModalProps> = ({
   userForm,
   setUserForm,
 }) => {
-  const [errors, setErrors] = React.useState({
-    first_name: "",
-    last_name: "",
-    email: "",
-    role: "",
-    country: "",
-    zip_code: "",
-  });
+  // These states are needed to show an error message for empty fields
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
 
   const sanitize = {
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions
@@ -59,157 +55,183 @@ const AdminUserModal: React.FC<UserModalProps> = ({
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
-      maxWidth="sm"
-      slotProps={{ paper: { sx: { mx: 2 } } }}
-      slots={{ transition: Transition }}
-    >
-      <DialogTitle>{editingUser ? "Update User" : "Create User"}</DialogTitle>
+    <>
+      <Dialog
+        open={open}
+        onClose={onClose}
+        fullWidth
+        maxWidth="sm"
+        slotProps={{ paper: { sx: { mx: 2 } } }}
+        slots={{ transition: Transition }}
+      >
+        <DialogTitle>{editingUser ? "Update User" : "Create User"}</DialogTitle>
 
-      <DialogContent>
-        <TextField
-          margin="dense"
-          label="First Name"
-          fullWidth
-          slotProps={{
-            inputLabel: { shrink: true },
-          }}
-          value={userForm.first_name}
-          onChange={(e) => {
-            const value = sanitize.lettersOnly(e.target.value);
-            setUserForm({ ...userForm, first_name: value });
-          }}
-        />
-
-        <TextField
-          margin="dense"
-          type="text"
-          label="Last Name"
-          fullWidth
-          /** slotProps property.
-           * https://mui.com/material-ui/api/menu/#props
-           * https://mui.com/material-ui/api/menu/#slots
-           * */
-          slotProps={{
-            inputLabel: { shrink: true },
-          }}
-          value={userForm.last_name}
-          onChange={(e) => {
-            const value = sanitize.lettersOnly(e.target.value);
-            setUserForm({ ...userForm, last_name: value });
-          }}
-        />
-
-        {!editingUser && (
+        <DialogContent>
           <TextField
             margin="dense"
-            label="Email"
+            label="First Name"
             fullWidth
             slotProps={{
               inputLabel: { shrink: true },
             }}
-            value={userForm.email}
+            value={userForm.first_name}
             onChange={(e) => {
-              const value = sanitize.emailSafe(e.target.value);
-              setUserForm({ ...userForm, email: value });
+              const value = sanitize.lettersOnly(e.target.value);
+              setUserForm({ ...userForm, first_name: value });
             }}
           />
-        )}
 
-        <FormControl fullWidth margin="dense">
-          <InputLabel id="role-label" shrink>
-            Role
-          </InputLabel>
+          <TextField
+            margin="dense"
+            type="text"
+            label="Last Name"
+            fullWidth
+            /** slotProps property.
+             * https://mui.com/material-ui/api/menu/#props
+             * https://mui.com/material-ui/api/menu/#slots
+             * */
+            slotProps={{
+              inputLabel: { shrink: true },
+            }}
+            value={userForm.last_name}
+            onChange={(e) => {
+              const value = sanitize.lettersOnly(e.target.value);
+              setUserForm({ ...userForm, last_name: value });
+            }}
+          />
 
-          <Select
-            labelId="role-label"
-            id="role"
-            value={userForm.role}
-            label="Role"
-            onChange={(e) =>
-              setUserForm({ ...userForm, role: e.target.value as string })
-            }
-            displayEmpty
-          >
-            <MenuItem disabled value="">
-              <span style={{ color: "#aaa" }}>Select role</span>
-            </MenuItem>
+          {!editingUser && (
+            <TextField
+              margin="dense"
+              label="Email"
+              fullWidth
+              slotProps={{
+                inputLabel: { shrink: true },
+              }}
+              value={userForm.email}
+              onChange={(e) => {
+                const value = sanitize.emailSafe(e.target.value);
+                setUserForm({ ...userForm, email: value });
+              }}
+            />
+          )}
 
-            {roles.map((r) => (
-              <MenuItem key={r.value} value={r.value}>
-                {r.label}
+          <FormControl fullWidth margin="dense">
+            <InputLabel id="role-label" shrink>
+              Role
+            </InputLabel>
+
+            <Select
+              labelId="role-label"
+              id="role"
+              value={userForm.role}
+              label="Role"
+              onChange={(e) =>
+                setUserForm({ ...userForm, role: e.target.value as string })
+              }
+              displayEmpty
+            >
+              <MenuItem disabled value="">
+                <span style={{ color: "#aaa" }}>Select role</span>
               </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl fullWidth margin="dense">
-          <InputLabel id="country-label">Country</InputLabel>
 
-          <Select
-            labelId="country-label"
-            id="country"
-            value={userForm.country}
-            label="Country"
-            onChange={(e) =>
-              setUserForm({ ...userForm, country: e.target.value as string })
-            }
-            displayEmpty
-          >
-            <MenuItem disabled value="">
-              <span style={{ color: "#aaa" }}>Country</span>
-            </MenuItem>
+              {roles.map((r) => (
+                <MenuItem key={r.value} value={r.value}>
+                  {r.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
-            {countries.map((c) => (
-              <MenuItem key={c.code} value={c.name}>
-                {c.name}
+          <FormControl fullWidth margin="dense">
+            <InputLabel id="country-label">Country</InputLabel>
+
+            <Select
+              labelId="country-label"
+              id="country"
+              value={userForm.country}
+              label="Country"
+              onChange={(e) =>
+                setUserForm({ ...userForm, country: e.target.value as string })
+              }
+              displayEmpty
+            >
+              <MenuItem disabled value="">
+                <span style={{ color: "#aaa" }}>Country</span>
               </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
 
-        <TextField
-          margin="dense"
-          label="Zip Code"
-          fullWidth
-          value={userForm.zip_code}
-          onChange={(e) => {
-            const value = sanitize.lettersNumbersHyphens(e.target.value);
-            setUserForm({ ...userForm, zip_code: value });
-          }}
-        />
-      </DialogContent>
+              {countries.map((c) => (
+                <MenuItem key={c.code} value={c.name}>
+                  {c.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
-      <DialogActions>
-        <Button
-          onClick={onClose}
-          sx={{
-            color: "#472d30",
-            "&:hover": { color: "#E26D5C" },
-          }}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
-          onClick={() => {
-            // console.log("FINAL SAVE PAYLOAD:", userForm);
-            onSave();
-          }}
-          sx={{
-            backgroundColor: "#472d30",
-            color: "#fff",
-            "&:hover": { backgroundColor: "#E26D5C" },
-            px: 5,
-          }}
-        >
-          {/* This very same modal will be used for updates too */}
-          {editingUser ? "Update User" : "Create User"}
-        </Button>
-      </DialogActions>
-    </Dialog>
+          <TextField
+            margin="dense"
+            label="Zip Code"
+            fullWidth
+            value={userForm.zip_code}
+            onChange={(e) => {
+              const value = sanitize.lettersNumbersHyphens(e.target.value);
+              setUserForm({ ...userForm, zip_code: value });
+            }}
+          />
+        </DialogContent>
+
+        <DialogActions>
+          <Button
+            onClick={onClose}
+            sx={{
+              color: "#472d30",
+              "&:hover": { color: "#E26D5C" },
+            }}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            variant="contained"
+            onClick={() => {
+              // Checking if the fields are filled in
+              if (
+                !userForm.first_name ||
+                !userForm.last_name ||
+                (!editingUser && !userForm.email) ||
+                !userForm.role ||
+                !userForm.country ||
+                !userForm.zip_code
+              ) {
+                setSnackbarMessage("Please fill in all required fields.");
+                setSnackbarOpen(true);
+                return;
+              }
+
+              // console.log("FINAL SAVE PAYLOAD:", userForm);
+              onSave();
+            }}
+            sx={{
+              backgroundColor: "#472d30",
+              color: "#fff",
+              "&:hover": { backgroundColor: "#E26D5C" },
+              px: 5,
+            }}
+          >
+            {/* This very same modal will be used for updates too */}
+            {editingUser ? "Update User" : "Create User"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar for error message */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarOpen(false)}
+        message={snackbarMessage}
+      />
+    </>
   );
 };
 
