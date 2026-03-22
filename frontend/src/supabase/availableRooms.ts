@@ -16,9 +16,17 @@ export const searchAvailableRooms = async (
   // Added to exclude the current booking id when user is updating their booking dates
   // It must be called out as possibly undefined as searchAvailableRooms is also used
   // for generic search when the user is not logged in
-  excludeBookingId?: number,
+  // excludeBookingId?: number,
+  // We pass a string now because booking IDs in the database are UUIDs, not numbers.
+  excludeBookingId?: string | null,
 ) => {
   try {
+    console.log("RPC payload:", {
+      check_in: checkIn,
+      check_out: checkOut,
+      guests,
+      exclude_booking_id: excludeBookingId,
+    });
     /**
      * Call the Supabase Postgres function 'get_available_rooms'
      * using the rpc() helper.

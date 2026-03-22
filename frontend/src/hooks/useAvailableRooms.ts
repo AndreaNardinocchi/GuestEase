@@ -15,7 +15,8 @@ export function useAvailableRooms(
   checkOut: string,
   guests: number,
   // Added to exclude the current booking id when user is updating their booking dates
-  excludeBookingId?: number,
+  // We pass a string now because booking IDs in the database are UUIDs, not numbers.
+  excludeBookingId?: string | null,
 ) {
   return useQuery({
     queryKey: ["availableRooms", checkIn, checkOut, guests, excludeBookingId],
