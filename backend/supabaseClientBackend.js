@@ -27,8 +27,8 @@ dotenv.config();
  * exposed to the frontend.
  * https://supabase.com/dashboard/project/xxxxxxxxxxxxxxx/settings/api-keys
  */
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseServiceKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 /**
  * If the environment variables are missing, throw an error immediately.

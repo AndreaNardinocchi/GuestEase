@@ -21,12 +21,6 @@ export const searchAvailableRooms = async (
   excludeBookingId?: string | null,
 ) => {
   try {
-    console.log("RPC payload:", {
-      check_in: checkIn,
-      check_out: checkOut,
-      guests,
-      exclude_booking_id: excludeBookingId,
-    });
     /**
      * Call the Supabase Postgres function 'get_available_rooms'
      * using the rpc() helper.

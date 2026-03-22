@@ -459,7 +459,12 @@ const AdminBookingsPage: React.FC = () => {
         {customerId && (
           <PaymentDialog
             open={paymentDialogOpen}
-            onClose={() => setPaymentDialogOpen(false)}
+            onClose={() => {
+              setPaymentDialogOpen(false);
+              // This is added so that if we close the payment modal,
+              // no update will be possible either
+              setOpenBookingModal(false);
+            }}
             // customerId={customerId}
             onSuccess={(paymentMethodId) => {
               /**

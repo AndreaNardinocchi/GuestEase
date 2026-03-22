@@ -379,7 +379,12 @@ const AccountMyTripsPage: React.FC = () => {
 
         <PaymentDialog
           open={stripeCheckOutModalOpen}
-          onClose={() => setStripeCheckOutModalOpen(false)}
+          onClose={() => {
+            setStripeCheckOutModalOpen(false);
+            // This is added so that if we close the payment modal,
+            // no update will be possible either
+            setOpen(false);
+          }}
           // customerId={profile?.stripe_customer_id || ""}
           onSuccess={handlePaymentSuccessSoUpdateNow}
         />
