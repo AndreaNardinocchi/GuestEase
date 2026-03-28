@@ -89,7 +89,7 @@ const Footer: React.FC = () => {
               </Link>
 
               <Link
-                href="https://www.youtube.com/"
+                href="https://www.youtube.com/watch?v=2RxNIrUVv5Q"
                 target="_blank"
                 rel="noopener"
                 color="inherit"
@@ -102,7 +102,7 @@ const Footer: React.FC = () => {
               </Link>
 
               <Link
-                href="https://www.duckduckgo.com/"
+                href="https://docs.google.com/presentation/d/1UsddfG92SykzCekhW-x7HJtw-DQKT6Id/edit?usp=sharing&ouid=101966536758614827033&rtpof=true&sd=true"
                 target="_blank"
                 rel="noopener"
                 color="inherit"
