@@ -5721,26 +5721,32 @@ return co.getTime() <= today.getTime();
 or, for the check-in
 
 ```ts
-function isCheckInTodayOrPast(checkIn: string | Date): boolean {
-  const today = new Date();
+/**
+ * The below function will check whether the check-in date is the current
+ * date + 24h or is in the past. If that is the case, the 'Update'
+ * button will get grayed out
+ */
+function isCheckIn24hOrPast(checkIn: string | Date): boolean {
+  const in24h = new Date();
+  in24h.setDate(in24h.getDate() + 1);
   // Resetting today to midnight
   // https://codetofun.com/js/date-sethours/
-  today.setHours(0, 0, 0, 0);
+  in24h.setHours(0, 0, 0, 0);
 
   // Setting check-in date and hours
   const ci = new Date(checkIn);
   ci.setHours(0, 0, 0, 0);
 
-  // Returning the subtraction between checkin and today's time and whether true or false
+  // Returning the subtraction between checkin and in24h's time and whether true or false
   // 'True' if the check-in date is today or in the past, and 'False' if in the future
-  return ci.getTime() <= today.getTime();
+  return ci.getTime() <= in24h.getTime();
 }
 ```
 
 So in practice:
 
 - 'isCheckoutTodayOrPast()' → disables 'Delete' if the stay already ended or ends today.
-- 'isCheckInTodayOrPast()' → disables 'Update' if the stay has already started or started today.
+- 'isCheckIn24hOrPast()' → disables 'Update' if the stay has already started or starts in 24h.
 
 ```ts
  <Button

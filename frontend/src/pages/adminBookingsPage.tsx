@@ -276,22 +276,23 @@ const AdminBookingsPage: React.FC = () => {
 
   /**
    * The below function will check whether the check-in date is the current
-   * date or is in the past. If that is the case, the 'Update'
+   * date + 24h or is in the past. If that is the case, the 'Update'
    * button will get grayed out
    */
-  function isCheckInTodayOrPast(checkIn: string | Date): boolean {
-    const today = new Date();
+  function isCheckIn24hOrPast(checkIn: string | Date): boolean {
+    const in24h = new Date();
+    in24h.setDate(in24h.getDate() + 1);
     // Resetting today to midnight
     // https://codetofun.com/js/date-sethours/
-    today.setHours(0, 0, 0, 0);
+    in24h.setHours(0, 0, 0, 0);
 
     // Setting check-in date and hours
     const ci = new Date(checkIn);
     ci.setHours(0, 0, 0, 0);
 
-    // Returning the subtraction between checkin and today's time and whether true or false
+    // Returning the subtraction between checkin and in24h's time and whether true or false
     // 'True' if the check-in date is today or in the past, and 'False' if in the future
-    return ci.getTime() <= today.getTime();
+    return ci.getTime() <= in24h.getTime();
   }
 
   return (
@@ -369,7 +370,7 @@ const AdminBookingsPage: React.FC = () => {
                 const checkoutIsTodayOrPast = isCheckoutTodayOrPast(
                   b.check_out,
                 );
-                const checkInIsTodayOrPast = isCheckInTodayOrPast(b.check_in);
+                const checkInIsIn24hOrPast = isCheckIn24hOrPast(b.check_in);
 
                 return (
                   <TableRow key={b.id}>
@@ -398,7 +399,7 @@ const AdminBookingsPage: React.FC = () => {
                       <Button
                         variant="outlined"
                         sx={{ mr: 1 }}
-                        disabled={checkInIsTodayOrPast}
+                        disabled={checkInIsIn24hOrPast}
                         onClick={() => handleOpenUpdateBooking(b)}
                       >
                         Update
