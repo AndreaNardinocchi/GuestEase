@@ -26,7 +26,7 @@ router.post("/send_email", async (req, res) => {
 
         /**
          * We authenticate using a Bearer token (our RESEND_API_KEY), as required by:
-         * https://resend.com/docs/api-reference/authentication
+         * https://resend.com/docs/api-reference/introduction#authentication
          */
         Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       },

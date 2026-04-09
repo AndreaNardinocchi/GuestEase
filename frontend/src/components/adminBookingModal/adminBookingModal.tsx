@@ -349,6 +349,12 @@ const AdminBookingModal: React.FC<BookingModalProps> = ({
             label="Guests"
             fullWidth
             value={String(localBooking?.guests ?? "")}
+            // Bug fix Post-submission on minimum guests number
+            slotProps={{
+              input: {
+                inputProps: { min: 1 },
+              },
+            }}
             onChange={(e) => {
               /**
                * 'value' will return the smallest between what the user types
